@@ -1,2 +1,4 @@
 # Dl4j-Benchmarks
-Repo to track dl4j benchmark code.
+
+This project is dedicated to tracking benchmark code for DL4J.
+
