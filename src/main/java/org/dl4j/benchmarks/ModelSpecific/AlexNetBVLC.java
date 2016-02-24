@@ -94,7 +94,7 @@ public class AlexNetBVLC {
         }
 
         DataSetIterator iter = new RecordReaderDataSetIterator(recordReader, width * height * nChannels, labels.size());
-//        iter.setPreProcessor(new ImagePreProcessor());
+        iter.setPreProcessor(new ImagePreProcessor());
         Nd4j.ENFORCE_NUMERICAL_STABILITY = true;
 
         log.info("Build model....");
