@@ -10,9 +10,9 @@
   <name>Dl4j-Benchmarks</name>
   <description>Examples of training different data sets</description>
   <properties>
-    <nd4j.version>0.4-rc3.9-SNAPSHOT</nd4j.version>
-    <dl4j.version>	0.4-rc3.9-SNAPSHOT</dl4j.version>
-    <canova.version>0.0.0.15-SNAPSHOT</canova.version>
+    <nd4j.version>0.4-rc3.9</nd4j.version>
+    <dl4j.version>0.4-rc3.9</dl4j.version>
+    <canova.version>0.0.0.15</canova.version>
     <jackson.version>2.5.1</jackson.version>
     <scala.version>2.10.4</scala.version>
   </properties>
@@ -31,15 +31,6 @@
       <url>http://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
   </distributionManagement>
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.nd4j</groupId>
-        <artifactId>nd4j-native</artifactId>
-        <version>${nd4j.version}</version>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>org.deeplearning4j</groupId>
@@ -55,13 +46,6 @@
       <groupId>org.deeplearning4j</groupId>
       <artifactId>deeplearning4j-core</artifactId>
       <version>${dl4j.version}</version>
-      <exclusions>
-        <!--Excluded to avoid conflict with version required for Spark -->
-        <exclusion>
-          <artifactId>jackson-databind</artifactId>
-          <groupId>com.fasterxml.jackson.core</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.deeplearning4j</groupId>
@@ -72,21 +56,6 @@
       <groupId>org.nd4j</groupId>
       <artifactId>nd4j-native</artifactId>
       <version>${nd4j.version}</version>
-    </dependency>
-    <dependency>
-      <artifactId>canova-nd4j-image</artifactId>
-      <groupId>org.nd4j</groupId>
-      <version>${canova.version}</version>
-    </dependency>
-    <dependency>
-      <artifactId>canova-nd4j-codec</artifactId>
-      <groupId>org.nd4j</groupId>
-      <version>${canova.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.dataformat</groupId>
-      <artifactId>jackson-dataformat-yaml</artifactId>
-      <version>${jackson.version}</version>
     </dependency>
   </dependencies>
 
