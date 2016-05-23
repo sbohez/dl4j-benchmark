@@ -1,5 +1,4 @@
-package org.dl4j.benchmarks.Standard;
-
+package org.dl4j.benchmarks.Other.Standard;
 
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
@@ -10,49 +9,51 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
 /**
- * Created by AlexBlack Aug.
+ * Basic CNN Layer Benchmark
+ * Created by nyghtowl on 11/22/15.
  */
-public class GravesLSTMBenchmark {
+public class CNNBenchmark {
+
     public static void main( String[] args ){
 
-        System.out.println("Factory: " + Nd4j.factory());
-
-        int miniBatchSize = 32;
-        int nIn = 150;
-        int layerSize = 300;
-        int timeSeriesLength = 50;
+        int numRows = 28;
+        int numColumns = 28;
+        int channel = 3;
+        int miniBatchSize = 128;
+        int kernels = 100;
 
         NeuralNetConfiguration conf = new NeuralNetConfiguration.Builder()
-                .layer(new org.deeplearning4j.nn.conf.layers.GravesLSTM.Builder()
-                        .nIn(nIn)
-                        .nOut(layerSize)
+                .layer(new org.deeplearning4j.nn.conf.layers.ConvolutionLayer.Builder()
+                        .nIn(channel)
+                        .nOut(kernels)
                         .weightInit(WeightInit.DISTRIBUTION).dist(new NormalDistribution(0, 0.1))
-                        .activation("tanh")
+                        .activation("relu")
+                        .kernelSize(2,2)
+                        .stride(1,1)
+                        .padding(1,1)
                         .build())
                 .build();
 
-        Layer lstm = LayerFactories.getFactory(conf.getLayer()).create(conf);
+        Layer cnn = LayerFactories.getFactory(conf.getLayer()).create(conf);
 
         int nIterationsBefore = 50;
         int nIterations = 100;
 
-        INDArray input = Nd4j.rand(new int[]{miniBatchSize, nIn, timeSeriesLength});
-        lstm.setInput(input);
+        INDArray input = Nd4j.rand(new int[]{miniBatchSize, channel, numRows, numColumns});
+        cnn.setInput(input);
 
         for( int i=0; i<nIterationsBefore; i++ ){
             //Set input, do a forward pass:
-            lstm.activate(true);
+            cnn.activate(true);
             if( i % 50 == 0 ) System.out.println(i);
         }
 
         System.out.println("Starting test: (forward pass)");
         long startTime = System.currentTimeMillis();
         for( int i=0; i<nIterations; i++ ){
-            lstm.activate(true);
+            cnn.activate(input);
         }
-
         long endTime = System.currentTimeMillis();
         System.out.println("Total runtime: " + (endTime-startTime)/10000 + "seconds");
     }
-
 }

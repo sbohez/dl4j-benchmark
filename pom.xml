@@ -10,14 +10,29 @@
   <name>Dl4j-Benchmarks</name>
   <description>Examples of training different data sets</description>
   <properties>
-    <nd4j.version>0.4-rc3.9</nd4j.version>
-    <dl4j.version>0.4-rc3.9</dl4j.version>
-    <canova.version>0.0.0.15</canova.version>
+    <nd4j.backend>nd4j-cuda-7.5</nd4j.backend>
+    <nd4j.version>0.4-rc3.10-SNAPSHOT</nd4j.version>
+    <dl4j.version>0.4-rc3.10-SNAPSHOT</dl4j.version>
+    <canova.version>0.0.0.16-SNAPSHOT</canova.version>
     <jackson.version>2.5.1</jackson.version>
     <scala.version>2.10.4</scala.version>
   </properties>
 
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.nd4j</groupId>
+        <artifactId>nd4j-native</artifactId>
+        <version>${nd4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.nd4j</groupId>
+        <artifactId>nd4j-cuda-7.5</artifactId>
+        <version>${nd4j.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <distributionManagement>
     <snapshotRepository>
@@ -54,8 +69,7 @@
     </dependency>
     <dependency>
       <groupId>org.nd4j</groupId>
-      <artifactId>nd4j-native</artifactId>
-      <version>${nd4j.version}</version>
+      <artifactId>${nd4j.backend}</artifactId>
     </dependency>
   </dependencies>
 
