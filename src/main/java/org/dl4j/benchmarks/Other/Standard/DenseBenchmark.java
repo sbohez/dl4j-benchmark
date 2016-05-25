@@ -9,7 +9,7 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
 /**
- * Created by nyghtowl on 11/22/15.
+ *
  */
 public class DenseBenchmark {
 
