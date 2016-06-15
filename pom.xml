@@ -10,7 +10,7 @@
   <name>Dl4j-Benchmarks</name>
   <description>Examples of training different data sets</description>
   <properties>
-    <nd4j.backend>nd4j-cuda-7.5</nd4j.backend>
+    <nd4j.backend>nd4j-native</nd4j.backend>
     <nd4j.version>0.4-rc3.11-SNAPSHOT</nd4j.version>
     <dl4j.version>0.4-rc3.11-SNAPSHOT</dl4j.version>
     <canova.version>0.0.0.17-SNAPSHOT</canova.version>

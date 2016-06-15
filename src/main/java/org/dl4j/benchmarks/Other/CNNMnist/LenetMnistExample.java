@@ -19,9 +19,6 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.nd4j.jita.allocator.enums.AllocationStatus;
-import org.nd4j.jita.conf.Configuration;
-import org.nd4j.jita.conf.CudaEnvironment;
 
 
 /**
@@ -32,13 +29,13 @@ public class LenetMnistExample {
 
     public static void main(String[] args) throws Exception {
 
-        CudaEnvironment.getInstance().getConfiguration()
-                .setFirstMemory(AllocationStatus.DEVICE)
-                .setExecutionModel(Configuration.ExecutionModel.SEQUENTIAL)
-                .setAllocationModel(Configuration.AllocationModel.CACHE_ALL)
-                .setMaximumBlockSize(128)
-                .enableDebug(false)
-                .setVerbose(false);
+//        CudaEnvironment.getInstance().getConfiguration()
+//                .setFirstMemory(AllocationStatus.DEVICE)
+//                .setExecutionModel(Configuration.ExecutionModel.SEQUENTIAL)
+//                .setAllocationModel(Configuration.AllocationModel.CACHE_ALL)
+//                .setMaximumBlockSize(128)
+//                .enableDebug(false)
+//                .setVerbose(false);
 
         int nChannels = 1;
         int outputNum = 10;
@@ -47,11 +44,9 @@ public class LenetMnistExample {
         int iterations = 1;
         int seed = 123;
 
-        log.info("Load data....");
         DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize,true,12345);
         DataSetIterator mnistTest = new MnistDataSetIterator(batchSize,false,12345);
 
-        log.info("Build model....");
         MultiLayerConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
                 .seed(seed)
                 .iterations(iterations)
@@ -96,21 +91,12 @@ public class LenetMnistExample {
         MultiLayerNetwork model = new MultiLayerNetwork(conf);
         model.init();
 
-        log.info("Train model....");
-//        model.setListeners(new ScoreIterationListener(1));
         for( int i=0; i<nEpochs; i++ ) {
             if(i!=0) mnistTrain.reset();
             model.fit(mnistTrain);
         }
 
-        log.info("Evaluate model....");
         Evaluation eval = model.evaluate(mnistTest);
-//        Evaluation eval = new Evaluation(outputNum);
-//        while(mnistTest.hasNext()){
-//            DataSet ds = mnistTest.next();
-//            INDArray output = model.output(ds.getFeatureMatrix());
-//            eval.eval(ds.getLabels(), output);
-//        }
         log.info(eval.stats());
 
         log.info("****************Example finished********************");

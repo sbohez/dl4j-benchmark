@@ -2,8 +2,10 @@ package org.dl4j.benchmarks.BahrampourStudy;
 
 
 import org.deeplearning4j.nn.conf.BackpropType;
+import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.NormalDistribution;
+import org.deeplearning4j.nn.conf.layers.GravesLSTM;
 import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
@@ -15,7 +17,7 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
  *
  */
 
-public class GravesLSTM {
+public class GravesLSTMTest {
     int miniBatchSize = 32;
     int nIn = 150;
     int layerSize = 300;
@@ -30,7 +32,7 @@ public class GravesLSTM {
 
     public void buildModel(){
 
-        NeuralNetConfiguration conf = new NeuralNetConfiguration.Builder()
+        MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
                 .learningRate(0.01)
                 .seed(12345)
                 .regularization(true)
@@ -44,13 +46,13 @@ public class GravesLSTM {
                         .activation("tanh")
                         .build())
                 .layer(1, new GravesLSTM.Builder()
-                        .nIn()
-                        .nOut()
+                        .nIn(layerSize)
+                        .nOut(layerSize)
                         .activation("tanh").build())
                 .layer(2, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MCXENT).activation("softmax")        //MCXENT + softmax for classification
-                        .nIn()
-                        .nOut(output).build())
-                .backpropType(BackpropType.TruncatedBPTT).tBPTTForwardLength(tbpttLength).tBPTTBackwardLength(tbpttLength)
+                        .nIn(layerSize)
+                        .nOut(outputNum).build())
+                .backpropType(BackpropType.TruncatedBPTT).tBPTTForwardLength(timeSeriesLength).tBPTTBackwardLength(timeSeriesLength)
                 .build();
         model = new MultiLayerNetwork(conf);
         model.init();
