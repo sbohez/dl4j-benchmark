@@ -41,7 +41,7 @@ public class Dl4j_MLPMnistSingleLayer{
             int numEpochs = 15;
 
             //Get the DataSetIterators:
-            DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, true, rngSeed);
+            DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, 10000, true, true, true, rngSeed);
             DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, rngSeed);
 
 
