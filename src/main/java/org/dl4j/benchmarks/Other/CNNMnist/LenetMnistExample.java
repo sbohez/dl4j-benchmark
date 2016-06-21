@@ -1,6 +1,7 @@
 package org.dl4j.benchmarks.Other.CNNMnist;
 
 
+import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
@@ -29,22 +30,14 @@ public class LenetMnistExample {
 
     public static void main(String[] args) throws Exception {
 
-//        CudaEnvironment.getInstance().getConfiguration()
-//                .setFirstMemory(AllocationStatus.DEVICE)
-//                .setExecutionModel(Configuration.ExecutionModel.SEQUENTIAL)
-//                .setAllocationModel(Configuration.AllocationModel.CACHE_ALL)
-//                .setMaximumBlockSize(128)
-//                .enableDebug(false)
-//                .setVerbose(false);
-
         int nChannels = 1;
         int outputNum = 10;
         int batchSize = 64;
-        int nEpochs = 10;
+        int epochs = 10;
         int iterations = 1;
         int seed = 123;
 
-        DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize,true,12345);
+        MultipleEpochsIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345));
         DataSetIterator mnistTest = new MnistDataSetIterator(batchSize,false,12345);
 
         MultiLayerConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
@@ -52,12 +45,12 @@ public class LenetMnistExample {
                 .iterations(iterations)
                 .regularization(true).l2(0.0005)
                 .learningRate(0.01)
-                .biasLearningRate(0.02)
-                .learningRateDecayPolicy(LearningRatePolicy.Inverse).lrPolicyDecayRate(0.001).lrPolicyPower(0.75)
+//                .biasLearningRate(0.02)
+//                .learningRateDecayPolicy(LearningRatePolicy.Inverse).lrPolicyDecayRate(0.001).lrPolicyPower(0.75)
                 .weightInit(WeightInit.XAVIER)
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(Updater.NESTEROVS).momentum(0.9)
-                .list(6)
+                .list()
                 .layer(0, new ConvolutionLayer.Builder(5, 5)
                         .nIn(nChannels)
                         .stride(1, 1)
@@ -84,17 +77,14 @@ public class LenetMnistExample {
                         .nOut(outputNum)
                         .activation("softmax")
                         .build())
-                .backprop(true).pretrain(false);
-        new ConvolutionLayerSetup(builder,28,28,1);
+                .backprop(true).pretrain(false)
+                .cnnInputSize(28,28,1);
 
         MultiLayerConfiguration conf = builder.build();
         MultiLayerNetwork model = new MultiLayerNetwork(conf);
         model.init();
 
-        for( int i=0; i<nEpochs; i++ ) {
-            if(i!=0) mnistTrain.reset();
-            model.fit(mnistTrain);
-        }
+        model.fit(mnistTrain);
 
         Evaluation eval = model.evaluate(mnistTest);
         log.info(eval.stats());

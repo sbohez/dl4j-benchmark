@@ -33,7 +33,7 @@ public class CNNBenchmark {
                         .build())
                 .build();
 
-        Layer cnn = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, null);
+        Layer cnn = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, null, true);
 
         int nIterationsBefore = 50;
         int nIterations = 100;

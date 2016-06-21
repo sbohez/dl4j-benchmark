@@ -31,7 +31,7 @@ public class GravesLSTMBenchmark {
                         .build())
                 .build();
 
-        Layer lstm = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, null);
+        Layer lstm = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, null, true);
 
         int nIterationsBefore = 50;
         int nIterations = 100;

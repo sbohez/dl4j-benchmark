@@ -5,7 +5,7 @@ import org.canova.api.split.LimitFileSplit;
 import org.canova.image.loader.BaseImageLoader;
 import org.canova.image.recordreader.ImageRecordReader;
 import org.deeplearning4j.datasets.canova.RecordReaderDataSetIterator;
-import org.deeplearning4j.datasets.iterator.DataSetIterator;
+
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.GradientNormalization;
@@ -24,6 +24,7 @@ import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.SplitTestAndTrain;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;

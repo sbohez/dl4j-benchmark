@@ -29,7 +29,7 @@ public class DenseBenchmark {
                         .build())
                 .build();
 
-        Layer layer = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, null);
+        Layer layer = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, null, true);
 
         int nIterationsBefore = 50;
         int nIterations = 100;
