@@ -36,8 +36,9 @@ public class LenetMnistExample {
         int epochs = 10;
         int iterations = 1;
         int seed = 123;
+        int nCores = 32;
 
-        MultipleEpochsIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345));
+        MultipleEpochsIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345), nCores);
         DataSetIterator mnistTest = new MnistDataSetIterator(batchSize,false,12345);
 
         MultiLayerConfiguration.Builder builder = new NeuralNetConfiguration.Builder()

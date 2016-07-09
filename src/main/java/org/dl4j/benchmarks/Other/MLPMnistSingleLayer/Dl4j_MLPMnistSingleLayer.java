@@ -1,5 +1,6 @@
 package org.dl4j.benchmarks.Other.MLPMnistSingleLayer;
 
+import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
@@ -39,9 +40,10 @@ public class Dl4j_MLPMnistSingleLayer{
             int batchSize = 128;
             int rngSeed = 123;
             int numEpochs = 15;
+            int nCores = 32;
 
             //Get the DataSetIterators:
-            DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, true, rngSeed);
+            DataSetIterator mnistTrain = new MultipleEpochsIterator(numEpochs, new MnistDataSetIterator(batchSize, true, rngSeed), nCores);
             DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, rngSeed);
 
 
@@ -73,9 +75,7 @@ public class Dl4j_MLPMnistSingleLayer{
             model.init();
 
             log.info("Train model....");
-            for( int i=0; i<numEpochs; i++ ){
-                model.fit(mnistTrain);
-            }
+            model.fit(mnistTrain);
 
 
             log.info("Evaluate model....");

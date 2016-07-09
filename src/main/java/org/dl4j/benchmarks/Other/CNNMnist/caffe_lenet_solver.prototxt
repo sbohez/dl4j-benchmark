@@ -3,11 +3,14 @@
 # https://github.com/BVLC/caffe/blob/master/examples/mnist/lenet_solver.prototxt
 net: "src/main/java/org/dl4j/benchmarks/Other/CNNMnist/caffe_lenet_train_test.prototxt"
 # test_iter specifies how many forward passes the test should carry out.
-# In the case of MNIST, we have test batch size 100 and 100 test iterations,
+# In the case of MNIST, we have test batch size X and 100 test iterations,
 # covering the full 10,000 testing images.
-test_iter: 100
-# Carry out testing every 500 training iterations.
-test_interval: 10000
+# epochs = (batchSize x max_iter)/numExamples = [64*9375]/60000
+# max_iter | train = (epochs * numExamples)/batchSize = (10*60000)/64
+# test_iter | test = (epochs * numExamples)/batchSize = (1*10000)/64
+test_iter: 156
+# Carry out testing every X training iterations.
+test_interval: 9375
 # The base learning rate, momentum and the weight decay of the network.
 base_lr: 0.01
 momentum: 0.9
@@ -16,14 +19,13 @@ weight_decay: 0.0005
 lr_policy: "inv"
 gamma: 0.0001
 power: 0.75
-# Display every 100 iterations
-display: 10000
+# Display every X iterations
+display:
 # The maximum number of iterations
-max_iter: 10000
+max_iter: 9375
 # snapshot intermediate results
-snapshot: 10000
+snapshot: 9375
 snapshot_prefix: "lenet_result"
 # solver mode: CPU or GPU
 solver_mode: CPU
-
-#epochs = (batch_size x max_iter)/No of train samples [64*10000/60000]
+type: "Nesterov"
