@@ -41,7 +41,7 @@ public class Dl4j_MLPMnistSingleLayer{
             int numEpochs = 15;
 
             //Get the DataSetIterators:
-            DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, 10000, true, true, true, rngSeed);
+            DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, true, rngSeed);
             DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, rngSeed);
 
 
@@ -79,12 +79,7 @@ public class Dl4j_MLPMnistSingleLayer{
 
 
             log.info("Evaluate model....");
-            Evaluation eval = new Evaluation(outputNum);
-            while(mnistTest.hasNext()){
-                DataSet next = mnistTest.next();
-                INDArray output = model.output(next.getFeatureMatrix());
-                eval.eval(next.getLabels(), output);
-            }
+            Evaluation eval = model.evaluate(mnistTest);
 
             log.info(eval.stats());
             log.info("****************Example finished********************");

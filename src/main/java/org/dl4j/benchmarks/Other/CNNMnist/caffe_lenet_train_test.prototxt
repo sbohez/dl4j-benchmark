@@ -1,3 +1,4 @@
+# Based on caffe example with modifications to reduce print
 #https://github.com/BVLC/caffe/blob/master/examples/mnist/lenet_train_test.prototxt
 name: "LeNet"
 layer {
