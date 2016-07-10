@@ -1,11 +1,15 @@
-package org.dl4j.benchmarks.Other.FacialRecognitionTesting;
+package org.dl4j.benchmarks.Other.Experiment;
 
-import org.canova.api.records.reader.RecordReader;
-import org.canova.api.split.LimitFileSplit;
+import org.canova.api.io.filters.BalancedPathFilter;
+import org.canova.api.io.labels.ParentPathLabelGenerator;
+import org.canova.api.split.FileSplit;
+import org.canova.api.split.InputSplit;
 import org.canova.image.loader.BaseImageLoader;
+import org.canova.image.loader.NativeImageLoader;
 import org.canova.image.recordreader.ImageRecordReader;
 import org.deeplearning4j.datasets.canova.RecordReaderDataSetIterator;
 
+import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.GradientNormalization;
@@ -21,9 +25,6 @@ import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.nd4j.linalg.api.buffer.DataBuffer;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
-import org.nd4j.linalg.dataset.SplitTestAndTrain;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
@@ -32,10 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.kohsuke.args4j.Option;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -91,14 +89,13 @@ public class MSRA_CFW {
     protected double l2 = 5e-4;
     @Option(name="--regularization",usage="Boolean to apply regularization",aliases="-reg")
     protected boolean regularization = true;
-    @Option(name="--split",usage="Percent to split for training",aliases="-split")
-    protected double split = 0.8;
 
     protected SubsamplingLayer.PoolingType poolingType = SubsamplingLayer.PoolingType.MAX;
     protected double nonZeroBias = 1;
     protected double dropOut = 0.5;
+    protected double splitTrainTest = 0.8;
 
-    public void run(String[] args) {
+    public void run(String[] args) throws Exception{
         Nd4j.dtype = DataBuffer.Type.DOUBLE;
 
         // Parse command line arguments if they exist
@@ -113,34 +110,32 @@ public class MSRA_CFW {
 
         int seed = 123;
         int listenerFreq = 1;
-        boolean appendLabels = true;
-        int splitTrainNum = (int) (batchSize*split);
-
-        SplitTestAndTrain trainTest;
-        DataSet trainInput;
-        List<INDArray> testInput = new ArrayList<>();
-        List<INDArray> testLabels = new ArrayList<>();
-        DataSet dsNext;
 
 
-        // TODO setup to download and untar the example - currently needs manual download
         log.info("Load data....");
-//      Categorize by name
-//        File mainPath = new File(BaseImageLoader.BASE_DIR, "thumbnails_features_deduped_sample"); // 10 labels
-//        List<String> labels = dataIter.getLabels();
+        File mainPath;
+        int numLabels;
+        boolean gender = false;
+        if(gender) {
+            numLabels = 2;
+            mainPath = new File(BaseImageLoader.BASE_DIR, "gender_class");
+        }else{
+            numLabels = 10;
+//            mainPath = new File(BaseImageLoader.BASE_DIR, "thumbnails_features_deduped_sample"); // 10 labels
+            mainPath = new File(BaseImageLoader.BASE_DIR, "data/mrsa-cfw"); // 10 labels
 
-//        File mainPath = new File(BaseImageLoader.BASE_DIR, "ms_sample"); // 4 labels
-//        List<String> labels = Arrays.asList(new String[]{"liv_tyler", "michelle_obama", "aaron_carter", "al_gore"});
-
-        File mainPath = new File(BaseImageLoader.BASE_DIR, "gender_class"); // 2 labels
-        List<String> labels = Arrays.asList(new String[]{"man", "woman"});
-
-        RecordReader recordReader = new ImageRecordReader(HEIGHT, WIDTH, CHANNELS, appendLabels);
-        try {
-            recordReader.initialize(new LimitFileSplit(mainPath, BaseImageLoader.ALLOWED_FORMATS, numExamples, numLabels, null, new Random(123)));
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
         }
+        // Organize  & limit data file paths
+        FileSplit fileSplit = new FileSplit(mainPath, NativeImageLoader.ALLOWED_FORMATS, new Random(123));
+        BalancedPathFilter pathFilter = new BalancedPathFilter(new Random(123), new ParentPathLabelGenerator(), numExamples, numLabels, batchSize);
+
+        // Setup train test split
+        InputSplit[] inputSplit = fileSplit.sample(pathFilter, numExamples*(1+splitTrainTest),  numExamples*(1-splitTrainTest));
+        InputSplit trainData = inputSplit[0];
+        InputSplit testData = inputSplit[1];
+
+        ImageRecordReader recordReader = new ImageRecordReader(HEIGHT, WIDTH, CHANNELS, new ParentPathLabelGenerator(), 255);
+        recordReader.initialize(trainData);
         DataSetIterator dataIter = new RecordReaderDataSetIterator(recordReader, batchSize, 1, numLabels);
 
         log.info("Build model....");
@@ -304,11 +299,11 @@ public class MSRA_CFW {
                 .backprop(true).pretrain(false)
                 .cnnInputSize(HEIGHT, WIDTH, CHANNELS);
 
-        MultiLayerNetwork model = new MultiLayerNetwork(builder.build());
-        model.init();
+        MultiLayerNetwork network = new MultiLayerNetwork(builder.build());
+        network.init();
 
         // Listeners
-        model.setListeners(Arrays.asList((IterationListener) new ScoreIterationListener(listenerFreq)));
+        network.setListeners(Arrays.asList((IterationListener) new ScoreIterationListener(listenerFreq)));
 
         IterationListener paramListener = ParamAndGradientIterationListener.builder()
                 .outputToFile(true)
@@ -354,40 +349,17 @@ public class MSRA_CFW {
 
         log.info("Train model....");
         // one epoch
-        while (dataIter.hasNext()) {
-            dsNext = dataIter.next();
-            dsNext.scale();
-            trainTest = dsNext.splitTestAndTrain(splitTrainNum, new Random(seed)); // train set that is the result
-            trainInput = trainTest.getTrain(); // get feature matrix and labels for training
-            testInput.add(trainTest.getTest().getFeatureMatrix());
-            testLabels.add(trainTest.getTest().getLabels());
-            model.fit(trainInput);
-        }
-
-        // more than 1 epoch for just training
-        for(int i = 1; i < epochs; i++) {
-            dataIter.reset();
-            while (dataIter.hasNext()) {
-                dsNext = dataIter.next();
-                trainTest = dsNext.splitTestAndTrain(splitTrainNum, new Random(seed));
-                trainInput = trainTest.getTrain();
-                model.fit(trainInput);
-            }
-        }
+        MultipleEpochsIterator trainIter = new MultipleEpochsIterator(epochs, dataIter);
+        network.fit(trainIter);
 
         log.info("**********Last Score***********");
-        log.info("{}", model.score());
+        log.info("{}", network.score());
 
         log.info("Evaluate model....");
-        Evaluation eval = new Evaluation(labels);
-        for(int i = 0; i < testInput.size(); i++) {
-            INDArray output = model.output(testInput.get(i));
-            eval.eval(testLabels.get(i), output);
-        }
-        INDArray output = model.output(testInput.get(0));
-        eval.eval(testLabels.get(0), output);
+        recordReader.initialize(testData);
+        dataIter = new RecordReaderDataSetIterator(recordReader, batchSize, 1, numLabels);
+        Evaluation eval = network.evaluate(dataIter);
         log.info(eval.stats());
-
 
         log.info("****************Example finished********************");
 

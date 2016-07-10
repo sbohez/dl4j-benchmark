@@ -1,4 +1,4 @@
-package org.dl4j.benchmarks.Other.ModelSpecific;
+package org.dl4j.benchmarks.Other.Experiment;
 
 import org.deeplearning4j.AlexNet;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
@@ -44,7 +44,7 @@ public class AlexNetBenchmark {
             model.feedForward(true);
 
         long endTime = System.currentTimeMillis();
-        System.out.println("Total runtime: " + (endTime-startTime)/10000 + "seconds");
+        System.out.println("Total runtime: " + (endTime-startTime) + "milliseconds");
 
     }
 

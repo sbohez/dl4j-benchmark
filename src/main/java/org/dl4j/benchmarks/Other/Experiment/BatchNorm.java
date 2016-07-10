@@ -1,4 +1,4 @@
-package org.dl4j.benchmarks.Other.BatchNorm;
+package org.dl4j.benchmarks.Other.Experiment;
 
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;

@@ -1,17 +1,11 @@
-package org.dl4j.benchmarks.Other.ModelSpecific;
+package org.dl4j.benchmarks.Other.Experiment;
 
 import org.canova.api.io.filters.BalancedPathFilter;
 import org.canova.api.io.labels.ParentPathLabelGenerator;
-import org.canova.api.records.reader.RecordReader;
 import org.canova.api.split.FileSplit;
 import org.canova.api.split.InputSplit;
-import org.canova.api.split.LimitFileSplit;
-import org.canova.image.loader.BaseImageLoader;
 import org.canova.image.loader.NativeImageLoader;
 import org.canova.image.recordreader.ImageRecordReader;
-import org.canova.image.transform.FlipImageTransform;
-import org.canova.image.transform.ImageTransform;
-import org.canova.image.transform.WarpImageTransform;
 import org.deeplearning4j.datasets.canova.RecordReaderDataSetIterator;
 
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
@@ -24,14 +18,9 @@ import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.conf.layers.SubsamplingLayer;
-import org.deeplearning4j.nn.conf.layers.setup.ConvolutionLayerSetup;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.api.DataSet;
-import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
-import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,9 +28,6 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 
 /**

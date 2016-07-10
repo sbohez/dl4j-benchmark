@@ -1,4 +1,4 @@
-package org.dl4j.benchmarks.Other.Standard;
+package org.dl4j.benchmarks.Other.Experiment;
 
 
 import org.deeplearning4j.nn.api.Layer;
@@ -31,7 +31,9 @@ public class GravesLSTMBenchmark {
                         .build())
                 .build();
 
-        Layer lstm = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, null, true);
+        int numParams = LayerFactories.getFactory(conf).initializer().numParams(conf,true);
+        INDArray params = Nd4j.create(1, numParams);
+        Layer lstm = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, params, true);
 
         int nIterationsBefore = 50;
         int nIterations = 100;
@@ -52,7 +54,7 @@ public class GravesLSTMBenchmark {
         }
 
         long endTime = System.currentTimeMillis();
-        System.out.println("Total runtime: " + (endTime-startTime)/10000 + "seconds");
+        System.out.println("Total runtime: " + (endTime-startTime) + " milliseconds");
     }
 
 }
