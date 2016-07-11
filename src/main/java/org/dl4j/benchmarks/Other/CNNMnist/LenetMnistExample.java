@@ -32,14 +32,15 @@ public class LenetMnistExample {
 
         int nChannels = 1;
         int outputNum = 10;
-        int batchSize = 64;
-        int epochs = 10;
+        int trainBatchSize = 66;
+        int testBatchSize = 100;
+        int epochs = 11;
         int iterations = 1;
         int seed = 123;
         int nCores = 32;
 
-        MultipleEpochsIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345), nCores);
-        DataSetIterator mnistTest = new MnistDataSetIterator(batchSize,false,12345);
+        MultipleEpochsIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(trainBatchSize,true,12345), nCores);
+        DataSetIterator mnistTest = new MnistDataSetIterator(testBatchSize,false,12345);
 
         MultiLayerConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
                 .seed(seed)

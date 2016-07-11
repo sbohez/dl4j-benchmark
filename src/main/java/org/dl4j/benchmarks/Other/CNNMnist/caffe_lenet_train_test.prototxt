@@ -14,7 +14,7 @@ layer {
   }
   data_param {
     source: "src/main/resources/mnist_train_lmdb"
-    batch_size: 64
+    batch_size: 66
     backend: LMDB
   }
 }

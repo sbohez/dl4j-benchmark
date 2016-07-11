@@ -1,30 +1,22 @@
 package org.dl4j.benchmarks.Other.Cifar10;
 
 import org.canova.image.loader.CifarLoader;
-import org.canova.image.transform.FlipImageTransform;
-import org.canova.image.transform.ImageTransform;
-import org.canova.image.transform.WarpImageTransform;
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.CifarDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
+import org.deeplearning4j.nn.conf.inputs.InvalidInputTypeException;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.dl4j.benchmarks.Other.Cifar10.TestModels.BatchNormModel;
-import org.dl4j.benchmarks.Other.Cifar10.TestModels.LRNModel;
-import org.nd4j.linalg.api.buffer.DataBuffer;
-import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
+import org.dl4j.benchmarks.Other.Cifar10.TestModels.CifarBatchNorm;
+import org.dl4j.benchmarks.Other.Cifar10.TestModels.CifarFullSigmoid;
+import org.dl4j.benchmarks.Other.Cifar10.TestModels.CifarQuickModel;
 import org.nd4j.linalg.dataset.api.iterator.StandardScaler;
-import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
 
 /**
  * CIFAR-10 is an image dataset created by Alex Krizhevsky, Vinod Nair, and Geoffrey Hinton. The dataset inculdes 60K
@@ -45,16 +37,16 @@ public class Cifar {
     protected static int numTrainExamples = CifarLoader.NUM_TRAIN_IMAGES;
     protected static int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
-    protected static int trainBatchSize = 100;
-    protected static int testBatchSize = 1000;
+    protected static int trainBatchSize;
+    protected static int testBatchSize;
     protected static int nCores = 32;
 
     protected static int seed = 42;
     protected static int listenerFreq = 1;
     protected static int iterations = 1;
-    protected static int epochs = 120;
+    protected static int epochs;
 
-    public static final boolean norm = true; // change to true to run BatchNorm model
+    public static String model = "Norm";
 
     public static void main(String[] args) throws IOException {
         MultiLayerNetwork network;
@@ -63,12 +55,30 @@ public class Cifar {
         System.out.println("Load data...");
 
         log.info("Build model....");
-        if(norm) {
-            network = new BatchNormModel(height, width, channels, numLabels, seed, iterations).init();
-        } else {
-            network = new LRNModel(height, width, channels, numLabels, seed, iterations).init();
-//            network = new Model4(height, width, channels, outputNum, seed, iterations).init();
+        switch (model) {
+            case "Quick":
+                trainBatchSize = 100;
+                testBatchSize = 100;
+                epochs = 1;
+                network = new CifarQuickModel(height, width, channels, numLabels, seed, iterations).init();
+                break;
+            case "FullSigmoid":
+                trainBatchSize = 100;
+                testBatchSize = 100;
+                epochs = 130;
+                network = new CifarFullSigmoid(height, width, channels, numLabels, seed, iterations).init();
+                break;
+            case "Norm":
+                trainBatchSize = 100;
+                testBatchSize = 1000;
+                epochs = 120;
+                network = new CifarBatchNorm(height, width, channels, numLabels, seed, iterations).init();
+                break;
+            default:
+                throw new InvalidInputTypeException("Incorrect model provided.");
+
         }
+
         network.setListeners(Arrays.asList((IterationListener) new ScoreIterationListener(listenerFreq)));
 
         System.out.println("Train model...");

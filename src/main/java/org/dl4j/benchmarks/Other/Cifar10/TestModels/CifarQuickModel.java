@@ -19,7 +19,7 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
  * http://caffe.berkeleyvision.org/gathered/examples/cifar10.html
  * https://github.com/BVLC/caffe/blob/master/examples/cifar10/cifar10_quick_train_test.prototxt
  */
-public class QuickModel {
+public class CifarQuickModel {
     private int height;
     private int width;
     private int channels;
@@ -27,7 +27,7 @@ public class QuickModel {
     private long seed;
     private int iterations;
 
-    public QuickModel(int height, int width, int channels, int outputNum, long seed, int iterations) {
+    public CifarQuickModel(int height, int width, int channels, int outputNum, long seed, int iterations) {
         this.height = height;
         this.width = width;
         this.channels = channels;
@@ -40,17 +40,13 @@ public class QuickModel {
                 .seed(seed)
                 .iterations(iterations)
                 .activation("relu")
-                .weightInit(WeightInit.DISTRIBUTION)
-                .dist(new GaussianDistribution(0, 1e-4))
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+                .weightInit(WeightInit.DISTRIBUTION).dist(new GaussianDistribution(0, 1e-4))
+                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-                .learningRate(0.001)
-                .biasLearningRate(2e-3)
+                .learningRate(0.001).biasLearningRate(2e-3)
                 .learningRateDecayPolicy(LearningRatePolicy.None)
-                .updater(Updater.NESTEROVS)
-                .momentum(0.9)
-                .regularization(true)
-                .l2(0.004)
+                .updater(Updater.NESTEROVS).momentum(0.9)
+                .regularization(true).l2(0.004)
                 .list()
                 .layer(0, new ConvolutionLayer.Builder(5, 5)
                         .name("cnn1")
@@ -67,6 +63,7 @@ public class QuickModel {
                         .stride(1, 1)
                         .padding(2, 2)
                         .nOut(32)
+                        .dist(new GaussianDistribution(0, 1e-2))
                         .build())
                 .layer(3, new SubsamplingLayer.Builder(SubsamplingLayer.PoolingType.MAX, new int[]{3, 3})
                         .name("pool2")
@@ -89,7 +86,6 @@ public class QuickModel {
                         .build())
                 .layer(7, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
                         .nOut(outputNum)
-                        .weightInit(WeightInit.XAVIER)
                         .activation("softmax")
                         .dist(new GaussianDistribution(0, 1e-2))
                         .build())

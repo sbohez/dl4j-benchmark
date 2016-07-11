@@ -14,15 +14,15 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
  *  https://github.com/BVLC/caffe/blob/master/examples/cifar10/cifar10_full_sigmoid_solver_bn.prototxt
  *  https://github.com/BVLC/caffe/blob/master/examples/cifar10/cifar10_full_sigmoid_train_test_bn.prototxt
  */
-public class BatchNormModel {
+public class CifarBatchNorm {
     private int height;
     private int width;
-    private int channels = 3;
+    private int channels;
     private int outputNum;
     private long seed;
     private int iterations;
 
-    public BatchNormModel(int height, int width,int channels,  int outputNum, long seed, int iterations) {
+    public CifarBatchNorm(int height, int width, int channels, int outputNum, long seed, int iterations) {
         this.height = height;
         this.width = width;
         this.channels = channels;
@@ -36,17 +36,15 @@ public class BatchNormModel {
                 .iterations(iterations)
                 .weightInit(WeightInit.DISTRIBUTION) // consider standard distribution with std .05
                 .dist(new GaussianDistribution(0, 1e-4))
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+                //.gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .learningRate(0.001)
                 .learningRateDecayPolicy(LearningRatePolicy.Step)
                 .lrPolicyDecayRate(1)
-                .biasLearningRate(0.1*2)
                 .lrPolicySteps(5000)
-                .updater(Updater.NESTEROVS)
-                .momentum(0.9)
+                .updater(Updater.NESTEROVS).momentum(0.9)
                 .regularization(true)
-                .l2(0.004)
+                //.l2(0.004)
                 .list()
                 .layer(0, new ConvolutionLayer.Builder(5, 5)
                         .name("cnn1")
@@ -91,7 +89,6 @@ public class BatchNormModel {
                         .build())
                 .layer(12, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
                         .nOut(outputNum)
-                        .weightInit(WeightInit.XAVIER)
                         .activation("softmax")
                         .dist(new GaussianDistribution(0, 1e-2))
                         .build())

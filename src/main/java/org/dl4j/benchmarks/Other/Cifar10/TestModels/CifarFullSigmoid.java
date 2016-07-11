@@ -18,15 +18,15 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
  * https://github.com/BVLC/caffe/blob/master/examples/cifar10/cifar10_full_solver_lr1.prototxt
  * https://github.com/BVLC/caffe/blob/master/examples/cifar10/cifar10_full_train_test.prototxt
  */
-public class LRNModel {
+public class CifarFullSigmoid {
     private int height;
     private int width;
-    private int channels = 3;
+    private int channels;
     private int outputNum;
     private long seed;
     private int iterations;
 
-    public LRNModel(int height, int width, int channels, int outputNum, long seed, int iterations) {
+    public CifarFullSigmoid(int height, int width, int channels, int outputNum, long seed, int iterations) {
         this.height = height;
         this.width = width;
         this.channels = channels;
@@ -41,7 +41,7 @@ public class LRNModel {
                 .activation("relu")
                 .weightInit(WeightInit.DISTRIBUTION) // consider standard distribution with std .05
                 .dist(new GaussianDistribution(0, 1e-4))
-                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
+//                .gradientNormalization(GradientNormalization.RenormalizeL2PerLayer)
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .learningRate(0.0001)
                 .biasLearningRate(0.0002)
@@ -89,7 +89,6 @@ public class LRNModel {
                         .build())
                 .layer(9, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
                         .nOut(outputNum)
-                        .weightInit(WeightInit.XAVIER)
                         .activation("softmax")
                         .dist(new GaussianDistribution(0, 1e-2))
                         .build())
