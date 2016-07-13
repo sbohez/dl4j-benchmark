@@ -32,8 +32,8 @@ import java.util.Arrays;
  * Model: https://gist.github.com/mavenlin/e56253735ef32c3c296d
  *
  */
-public class Cifar {
-    protected static final Logger log = LoggerFactory.getLogger(Cifar.class);
+public class Dl4j_Cifar10 {
+    protected static final Logger log = LoggerFactory.getLogger(Dl4j_Cifar10.class);
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
@@ -151,7 +151,10 @@ public class Cifar {
 
         System.out.println("Train model...");
         MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, normalizeValue, true), nCores);
+
+        long timeX = System.currentTimeMillis();
         network.fit(cifar);
+        long timeY = System.currentTimeMillis();
 
         log.info("Evaluate model....");
         CifarDataSetIterator cifarTest = new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false);
@@ -159,6 +162,7 @@ public class Cifar {
         System.out.println(eval.stats(true));
 
         log.info("****************Example finished********************");
+        log.info("Total train time: {}", (timeY - timeX));
 
         new StandardScaler();
 

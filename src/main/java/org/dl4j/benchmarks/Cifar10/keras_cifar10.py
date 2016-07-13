@@ -1,6 +1,10 @@
-'''Train a simple deep CNN on the CIFAR10 small images dataset.
+'''
+Keras CIFAR10
+Reference:https://github.com/fchollet/keras/blob/master/examples/cifar10_cnn.py
+
 GPU run command:
     THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python cifar10_cnn.py
+
 It gets down to 0.65 test logloss in 25 epochs, and down to 0.55 after 50 epochs.
 (it's still underfitting at that point, though).
 Note: the data was pickled with Python 2, and some encoding issues might prevent you

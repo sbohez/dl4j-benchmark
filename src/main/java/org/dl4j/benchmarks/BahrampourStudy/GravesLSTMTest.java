@@ -23,7 +23,7 @@ public class GravesLSTMTest {
     int layerSize = 300;
     int timeSeriesLength = 50;
     private int outputNum = 10;
-    private long seed = 123;
+    private long seed = 42;
     private int iterations = 1;
     private int nIterations = 100;
     private int batchSize = 16;

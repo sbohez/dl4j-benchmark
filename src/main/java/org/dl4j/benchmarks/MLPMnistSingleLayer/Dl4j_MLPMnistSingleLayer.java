@@ -69,18 +69,21 @@ public class Dl4j_MLPMnistSingleLayer{
                     .pretrain(false).backprop(true)
                     .build();
 
-            MultiLayerNetwork model = new MultiLayerNetwork(conf);
-            model.init();
+            MultiLayerNetwork network = new MultiLayerNetwork(conf);
+            network.init();
 
             log.info("Train model....");
-            model.fit(mnistTrain);
 
+            long timeX = System.currentTimeMillis();
+            network.fit(mnistTrain);
+            long timeY = System.currentTimeMillis();
 
             log.info("Evaluate model....");
-            Evaluation eval = model.evaluate(mnistTest);
+            Evaluation eval = network.evaluate(mnistTest);
 
             log.info(eval.stats());
             log.info("****************Example finished********************");
+            log.info("Total time: {}", (timeY - timeX));
 
         }
 
