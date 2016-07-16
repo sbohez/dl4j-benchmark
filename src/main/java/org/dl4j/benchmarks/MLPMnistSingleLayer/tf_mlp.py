@@ -13,6 +13,13 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 from datetime import datetime
 
+def init_weights(shape):
+    (fan_in, fan_out) = shape
+    low = -1*np.sqrt(6.0/(fan_in + fan_out)) # {sigmoid:4, tanh:1}
+    high = 1*np.sqrt(6.0/(fan_in + fan_out))
+    return tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=tf.float32))
+
+
 def run():
     # Hyper-parameters
     learning_rate = 0.0006
@@ -27,14 +34,10 @@ def run():
     y_ = tf.placeholder(tf.float32, [None, 10])
 
     # Create the model
-    with tf.variable_scope("hidden", reuse=True):
-        hiddeneW = tf.Variable(tf.get_variable("hiddenW", shape=[784, 1000],
-                                   initializer=tf.contrib.layers.xavier_initializer(seed=42)))
-    hiddenb = tf.Variable(tf.zeros([1000]))
-    with tf.variable_scope("output", reuse=True):
-        W = tf.Variable(tf.get_variable("W", shape=[1000, 10],
-                                        initializer=tf.contrib.layers.xavier_initializer(seed=42)))
-    b = tf.Variable(tf.zeros([10]))
+    hiddenW = init_weights(shape=[784, 1000])
+    hiddenb = tf.Variable(tf.zeros([1, 1000]))
+    W = init_weights(shape=[1000, 10])
+    b = tf.Variable(tf.zeros([1, 10]))
 
     hidden1 = tf.nn.relu(tf.matmul(x, hiddenW) + hiddenb)
     y = tf.nn.softmax(tf.matmul(hidden1, W) + b)
@@ -47,8 +50,7 @@ def run():
 
     # Train
     sess = tf.InteractiveSession()
-    init = tf.initialize_all_variables()\
-    sess.run(init)
+    sess.run(tf.initialize_all_variables())
 
     time = datetime.now()
     for epoch in range(training_epochs):

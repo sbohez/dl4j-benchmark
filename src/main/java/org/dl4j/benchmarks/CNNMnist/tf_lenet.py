@@ -17,9 +17,23 @@ from datetime import datetime
 
 # The MNIST dataset has 10 classes, representing the digits 0 through 9.
 NUM_CLASSES = 10
-# The MNIST images are always 28x28 pixels.
+# The MNIST images are always 28x28x1 pixels.
 IMAGE_SIZE = 28
-IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE
+IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE * 1
+LEARNING_RATE = 0.0006
+TRAINING_EPOCHS = 15
+BATCH_SIZE = 128
+MOMENTUM = 0.9
+L2=1e-4
+
+def load_data():
+    return input_data.read_data_sets("/tmp/data/", one_hot=True)
+
+def init_weights(shape):
+    (fan_in, fan_out) = shape
+    low = -1*np.sqrt(6.0/(fan_in + fan_out)) # {sigmoid:4, tanh:1}
+    high = 1*np.sqrt(6.0/(fan_in + fan_out))
+    return tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=tf.float32, name="weights"))
 
 def inference(images, hidden1_units, hidden2_units):
     """Build the MNIST model up to where it may be used for inference.
@@ -32,12 +46,8 @@ def inference(images, hidden1_units, hidden2_units):
     """
     # Hidden 1
     with tf.name_scope('hidden1') as scope:
-        weights = tf.Variable(
-                tf.truncated_normal([IMAGE_PIXELS, hidden1_units],
-                                    stddev=1.0 / math.sqrt(float(IMAGE_PIXELS))),
-                name='weights')
-        biases = tf.Variable(tf.zeros([hidden1_units]),
-                             name='biases')
+        weights = init_weights(shape)
+        biases = tf.Variable(tf.zeros([hidden1_units]),name='biases')
         hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
     # Hidden 2
     with tf.name_scope('hidden2') as scope:
@@ -126,3 +136,7 @@ def evaluation(logits, labels):
     correct = tf.nn.in_top_k(logits, labels, 1)
     # Return the number of true entries.
     return tf.reduce_sum(tf.cast(correct, tf.int32))
+
+if __name__ == "__main__":
+    x = load_data()
+    inference(x, )
