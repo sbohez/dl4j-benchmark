@@ -40,7 +40,7 @@ public class Dl4j_Lenet_MultiGPU extends Dl4j_LenetMnist {
             wrapper.fit(mnistTrain);
             if (i != epochs-1) mnistTrain.reset();
         }
-        
+
         log.info("Evaluate model....");
         Evaluation eval = network.evaluate(mnistTest);
         log.info(eval.stats());

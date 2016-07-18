@@ -102,8 +102,6 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
             name,
             shape,
             tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
-             # TODO add xavier
-
     if wd is not None:
         weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
         tf.add_to_collection('losses', weight_decay)

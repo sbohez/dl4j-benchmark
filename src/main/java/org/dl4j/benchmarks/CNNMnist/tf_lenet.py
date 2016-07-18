@@ -20,14 +20,23 @@ from six.moves import urllib, xrange
 import numpy as np
 
 NUM_CLASSES = 10
-IMAGE_SIZE = 28
+HEIGHT = 28
+WIDTH = 28
+CHANNELS = 1
 IMAGE_PIXELS = mnist.IMAGE_PIXELS
+CORE_TYPE = 'CPU'
+DTYPE = tf.float32
+
+# '/gpu:1' if multiple
+DEVICE = '/cpu:0' if(CORE_TYPE == 'CPU') else '/gpu:0'
+NUM_GPUS = 0 if(CORE_TYPE == 'CPU') else 1
+CUDNN = False
+
 
 FLAGS = tf.app.flags.FLAGS
 # max_iteration = (epochs * numExamples)/batchSize (11 * 60000)/66
 tf.app.flags.DEFINE_integer('max_iter', 10000, 'Number of iterations to run trainer.')
-tf.app.flags.DEFINE_integer('hidden1', 128, 'Number of units in hidden layer 1.')
-tf.app.flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
+tf.app.flags.DEFINE_integer('ffn1', 500, 'Number of units in feed forward layer 1.')
 tf.app.flags.DEFINE_integer('batch_size', 66, 'Batch size. Must divide evenly into the dataset sizes.')
 tf.app.flags.DEFINE_integer('test_batch_size', 100, 'Test batch size. Must divide evenly into the dataset sizes.')
 tf.app.flags.DEFINE_string('train_dir', 'data', 'Directory to put the training data.')
@@ -35,6 +44,7 @@ tf.app.flags.DEFINE_boolean('fake_data', False, 'If true, uses fake data for uni
 tf.app.flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
 tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
+tf.app.flags.DEFINE_int('seed', 42, 'Random seed.')
 
 # TODO add gpu functionality
 
@@ -55,16 +65,16 @@ def fill_feed_dict(data_set, images_pl, labels_pl):
 def placeholder_inputs(batch_size):
     """Generate placeholder variables to represent the input tensors.
     """
-    images_placeholder = tf.placeholder(tf.float32, shape=(batch_size, IMAGE_PIXELS))
-    labels_placeholder = tf.placeholder(tf.int32, shape=(batch_size))
+    images_placeholder = tf.placeholder(DTYPE, shape=(batch_size, IMAGE_PIXELS))
+    labels_placeholder = tf.placeholder(DTYPE, shape=(batch_size))
     return images_placeholder, labels_placeholder
 
 
-def init_weights(shape):
+def _init_weights(shape):
     (fan_in, fan_out) = shape
     low = -1*np.sqrt(6.0/(fan_in + fan_out)) # {sigmoid:4, tanh:1}
     high = 1*np.sqrt(6.0/(fan_in + fan_out))
-    weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=tf.float32))
+    weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=DTYPE))
     weight_decay = tf.mul(tf.nn.l2_loss(weights), FLAGS.l2, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
     return weights
@@ -74,21 +84,35 @@ def init_weights(shape):
 def inference(images, hidden1_units, hidden2_units):
     """Build the MNIST model up to where it may be used for inference.
     """
-    # Hidden 1
-    with tf.name_scope('hidden1'):
-        weights = init_weights([IMAGE_PIXELS, hidden1_units])
-        biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
-        hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
-    # Hidden 2
-    with tf.name_scope('hidden2'):
-        weights = tf.Variable([hidden1_units, hidden2_units])
-        biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
-        hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
-    # Linear
+    with tf.variable_scope('cnn1') as scope:
+        depth1 = 20
+        kernel = _init_weights([5, 5, CHANNELS, depth1])
+        conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], "VALID", data_format='NCHW',
+                            use_cudnn_on_gpu=CUDNN) #VALID no padding
+        biases = tf.Variable(tf.zeros([depth1]), name='biases')
+        conv1 = tf.nn.bias_add(conv, biases, name=scope.name)
+    pool1 = tf.nn.max_pool(conv1, ksize=[1, 1, 2, 2], strides=[1, 1, 2, 2], padding='VALID',
+                           data_format='NCHW', name='maxpool1')
+    with tf.variable_scope('cnn2') as scope:
+        depth2 = 50
+        kernel = _init_weights([5, 5, depth1, depth1])
+        conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], "VALID", data_format='NCHW',
+                            use_cudnn_on_gpu=CUDNN)
+        biases = tf.Variable(tf.zeros([depth2]), name='biases')
+        conv2 = tf.nn.bias_add(conv, biases, name=scope.name)
+    pool2 = tf.nn.max_pool(conv2, ksize=[1, 1, 2, 2], strides=[1, 1, 2, 2], padding='VALID',
+                           data_format='NCHW', name='maxpool2')
+    with tf.name_scope('ffn1'):
+        reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
+        dim = reshape.get_shape()[1].value
+        weights = _init_weights([dim, FLAGS.ffn1])
+        biases = tf.Variable(tf.zeros([FLAGS.ffn1]), name='biases')
+        hidden1 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
+
     with tf.name_scope('softmax_linear'):
-        weights = tf.Variable([hidden2_units, NUM_CLASSES])
+        weights = _init_weights([FLAGS.ffn1, NUM_CLASSES])
         biases = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
-        logits = tf.matmul(hidden2, weights) + biases
+        logits = tf.add(tf.matmul(hidden1, weights), biases, name=scope.name)
     return logits
 
 
@@ -100,7 +124,7 @@ def score(logits, labels):
     indices = tf.expand_dims(tf.range(0, batch_size), 1)
     concated = tf.concat(1, [indices, labels])
     onehot_labels = tf.sparse_to_dense(concated, tf.pack([batch_size, NUM_CLASSES]), 1.0, 0.0)
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits,onehot_labels,name='xentropy')
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, onehot_labels, name='xentropy')
     loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
     return loss
 
@@ -137,10 +161,11 @@ def run_training(train_data):
         init = tf.initialize_all_variables()
 
         # Create a saver for writing training checkpoints.
-        saver = tf.train.Saver()
+        # saver = tf.train.Saver()
 
         # Create a session for running Ops on the Graph.
-        sess = tf.Session()
+        config = tf.ConfigProto(device_count={'GPU': NUM_GPUS})
+        sess = tf.InteractiveSession(config=config)
 
         # Instantiate a SummaryWriter to output summaries and the Graph.
         summary_writer = tf.train.SummaryWriter(FLAGS.data_dir, sess.graph)

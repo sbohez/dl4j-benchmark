@@ -50,7 +50,7 @@ public class Dl4j_MLPMnistSingleLayer{
             DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, rngSeed);
 
 
-            log.info("Build model....");
+//            log.info("Build model....");
             MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
                     .seed(rngSeed)
                     .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
@@ -77,14 +77,14 @@ public class Dl4j_MLPMnistSingleLayer{
             MultiLayerNetwork network = new MultiLayerNetwork(conf);
             network.init();
 
-            log.info("Train model....");
+//            log.info("Train model....");
 
             for(int i=0; i < epochs; i++) {
                 network.fit(mnistTrain);
                 if (i != epochs-1) mnistTrain.reset();
             }
 
-            log.info("Evaluate model....");
+//            log.info("Evaluate model....");
             Evaluation eval = network.evaluate(mnistTest);
 
             log.info(eval.stats());

@@ -18,8 +18,12 @@ from six.moves import urllib, xrange
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
 IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE * 1
-CORE_TYPE = 'GPU'
+CORE_TYPE = 'CPU'
 DTYPE = tf.float32
+
+# '/gpu:1' if multiple
+DEVICE = '/cpu:0' if(CORE_TYPE == 'CPU') else '/gpu:0'
+NUM_GPUS = 0 if(CORE_TYPE == 'CPU') else 1
 
 FLAGS = tf.app.flags.FLAGS
 # max_iteration = (epochs * numExamples)/batchSize (15 * 60000)/128
@@ -33,15 +37,15 @@ tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
 tf.app.flags.DEFINE_int('seed', 42, 'Random seed.')
 
 
-# TODO add gpu functionality & confirm accuracy | compare to other examples
+# TODO add gpu functionality & confirm accuracy
 
 
-def init_weights(shape):
+def _init_weights(shape):
     # Xavier weight initialization
     (fan_in, fan_out) = shape
     low = -1*np.sqrt(6.0/(fan_in + fan_out)) # {sigmoid:4, tanh:1}
     high = 1*np.sqrt(6.0/(fan_in + fan_out))
-    weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=DTYPE, seed=FLAGS.seed))
+    weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, seed=FLAGS.seed))
     weight_decay = tf.mul(tf.nn.l2_loss(weights), FLAGS.l2, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
     return weights
@@ -52,13 +56,13 @@ def inference(images):
     """
     # Hidden 1
     with tf.name_scope('hidden1'):
-        weights = init_weights([IMAGE_PIXELS, FLAGS.hidden1_units])
-        biases = tf.Variable(tf.zeros([FLAGS.hidden1_units]),  name='biases')
+        weights = _init_weights([IMAGE_PIXELS, FLAGS.hidden1_units])
+        biases = tf.Variable(tf.zeros([FLAGS.hidden1_units], dtype=DTYPE), dtype=DTYPE, name='biases')
         hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
     # Linear
     with tf.name_scope('softmax_linear'):
-        weights = tf.Variable([FLAGS.hidden1_units, NUM_CLASSES])
-        biases = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
+        weights = _init_weights([FLAGS.hidden1_units, NUM_CLASSES])
+        biases = tf.Variable(tf.zeros([NUM_CLASSES], dtype=DTYPE), dtype=DTYPE, name='biases')
         logits = tf.matmul(hidden1, weights) + biases
     return logits
 
@@ -82,7 +86,10 @@ def run():
     train_step = optimizer.minimize(cross_entropy, global_step=global_step)
 
     # Train
-    sess = tf.InteractiveSession()
+    # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.01)
+    # with tf.Session(config=tf.ConfigProto(log_device_placement=True, gpu_options=gpu_options)) as sess:
+    config = tf.ConfigProto(device_count={'GPU': NUM_GPUS})
+    sess = tf.InteractiveSession(config=config)
     sess.run(tf.initialize_all_variables())
 
     for _ in xrange(FLAGS.max_iter):
@@ -91,10 +98,10 @@ def run():
 
     # Test trained model
     correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(y_,1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, DTYPE))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, dtype=DTYPE))
     print(accuracy.eval({x: mnist.test.images, y_: mnist.test.labels}))
     duration = time.time() - start_time
-    print('Total train time: %s' % duration)
+    print('Total train time: %s' % (duration * 1000))
     sess.close
 
 if __name__ == "__main__":
