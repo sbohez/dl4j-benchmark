@@ -66,6 +66,7 @@ public class LeNet {
                         .build())
                 .layer(4, new DenseLayer.Builder()
                         .name("ffn1")
+                        .activation("relu")
                         .nOut(500)
                         .build())
                 .layer(5, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
