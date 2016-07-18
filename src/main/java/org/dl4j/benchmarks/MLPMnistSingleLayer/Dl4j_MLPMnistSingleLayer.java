@@ -37,11 +37,16 @@ public class Dl4j_MLPMnistSingleLayer{
             int outputNum = 10;
             int batchSize = 128;
             int rngSeed = 123;
-            int numEpochs = 15;
-            int nCores = 32;
+            int epochs = 15;
+            int hiddenNodes = 1000;
+            double learningRate = 6e-4;
+            double momentum = 0.9;
+            double l2 = 1e-4;
+            
+            long duration = System.currentTimeMillis();
 
             //Get the DataSetIterators:
-            DataSetIterator mnistTrain = new MultipleEpochsIterator(numEpochs, new MnistDataSetIterator(batchSize, true, rngSeed), nCores);
+            DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, true, rngSeed);
             DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, rngSeed);
 
 
@@ -50,18 +55,18 @@ public class Dl4j_MLPMnistSingleLayer{
                     .seed(rngSeed)
                     .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                     .iterations(1)
-                    .learningRate(0.006)
-                    .updater(Updater.NESTEROVS).momentum(0.9)
-                    .regularization(true).l2(1e-4)
+                    .learningRate(learningRate)
+                    .updater(Updater.NESTEROVS).momentum(momentum)
+                    .regularization(true).l2(l2)
                     .list()
                     .layer(0, new DenseLayer.Builder()
                             .nIn(numRows * numColumns)
-                            .nOut(1000)
+                            .nOut(hiddenNodes)
                             .activation("relu")
                             .weightInit(WeightInit.XAVIER)
                             .build())
                     .layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-                            .nIn(1000)
+                            .nIn(hiddenNodes)
                             .nOut(outputNum)
                             .activation("softmax")
                             .weightInit(WeightInit.XAVIER)
@@ -74,16 +79,16 @@ public class Dl4j_MLPMnistSingleLayer{
 
             log.info("Train model....");
 
-            long timeX = System.currentTimeMillis();
-            network.fit(mnistTrain);
-            long timeY = System.currentTimeMillis();
+            for(int i=0; i < epochs; i++)
+                network.fit(mnistTrain);
 
             log.info("Evaluate model....");
             Evaluation eval = network.evaluate(mnistTest);
 
             log.info(eval.stats());
             log.info("****************Example finished********************");
-            log.info("Total time: {}", (timeY - timeX));
+            log.info("Total time: {}", (System.currentTimeMillis() - duration));
+
 
         }
 

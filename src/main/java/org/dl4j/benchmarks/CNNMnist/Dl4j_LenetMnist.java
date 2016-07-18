@@ -27,21 +27,21 @@ public class Dl4j_LenetMnist {
     public final static int nCores = 32;
 
     public static void main(String[] args) throws Exception {
-        MultipleEpochsIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(trainBatchSize,true,12345), nCores);
+        long duration = System.currentTimeMillis();
+        DataSetIterator mnistTrain = new MnistDataSetIterator(trainBatchSize,true,12345);
         DataSetIterator mnistTest = new MnistDataSetIterator(testBatchSize,false,12345);
 
         MultiLayerNetwork network = new LeNet(height, width, channels, numLabels, seed, iterations).init();
         network.init();
 
-        long timeX = System.currentTimeMillis();
-        network.fit(mnistTrain);
-        long timeY = System.currentTimeMillis();
+        for(int i=0; i < epochs; i++)
+            network.fit(mnistTrain);
 
         Evaluation eval = network.evaluate(mnistTest);
         log.info(eval.stats());
 
         log.info("****************Example finished********************");
-        log.info("Total train time: {}", (timeY - timeX));
+        log.info("Total time: {}", (System.currentTimeMillis() - duration));
 
     }
 }

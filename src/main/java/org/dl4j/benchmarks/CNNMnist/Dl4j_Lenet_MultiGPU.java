@@ -19,8 +19,8 @@ public class Dl4j_Lenet_MultiGPU extends Dl4j_LenetMnist {
     private static final Logger log = LoggerFactory.getLogger(Dl4j_Lenet_MultiGPU.class);
 
     public static void main(String[] args) throws Exception {
-
-        MultipleEpochsIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(trainBatchSize, true, 12345), nCores);
+        long duration = System.currentTimeMillis();
+        DataSetIterator mnistTrain = new MnistDataSetIterator(trainBatchSize,true,12345);
         DataSetIterator mnistTest = new MnistDataSetIterator(testBatchSize, false, 12345);
 
         MultiLayerNetwork network = new LeNet(height, width, channels, numLabels, seed, iterations).init();
@@ -36,14 +36,13 @@ public class Dl4j_Lenet_MultiGPU extends Dl4j_LenetMnist {
                 .averagingFrequency(3)
                 .build();
 
-        long timeX = System.currentTimeMillis();
-        wrapper.fit(mnistTrain);
-        long timeY = System.currentTimeMillis();
+        for(int i=0; i < epochs; i++)
+            wrapper.fit(mnistTrain);
 
         log.info("Evaluate model....");
         Evaluation eval = network.evaluate(mnistTest);
         log.info(eval.stats());
         log.info("****************Example finished********************");
-        log.info("Total time: {}", (timeY - timeX));
+        log.info("Total time: {}", (System.currentTimeMillis() - duration));
     }
 }
