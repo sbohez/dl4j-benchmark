@@ -1,12 +1,12 @@
 package org.dl4j.benchmarks.CNNMnist;
 
-import org.deeplearning4j.LeNet;
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.parallelism.ParallelWrapper;
+import org.dl4j.benchmarks.TestModels.LeNet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,9 +14,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Created by @raver119
  */
-public class Lenet_MultiGPU extends Dl4j_LenetMnist {
+public class Dl4j_Lenet_MultiGPU extends Dl4j_LenetMnist {
 
-    private static final Logger log = LoggerFactory.getLogger(Lenet_MultiGPU.class);
+    private static final Logger log = LoggerFactory.getLogger(Dl4j_Lenet_MultiGPU.class);
 
     public static void main(String[] args) throws Exception {
 

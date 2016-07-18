@@ -1,7 +1,7 @@
 package org.dl4j.benchmarks.Other.Experiment;
 
-import org.deeplearning4j.AlexNet;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.dl4j.benchmarks.TestModels.AlexNet;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
