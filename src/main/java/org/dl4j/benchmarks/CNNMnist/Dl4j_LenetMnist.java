@@ -34,8 +34,10 @@ public class Dl4j_LenetMnist {
         MultiLayerNetwork network = new LeNet(height, width, channels, numLabels, seed, iterations).init();
         network.init();
 
-        for(int i=0; i < epochs; i++)
+        for(int i=0; i < epochs; i++) {
             network.fit(mnistTrain);
+            if (i != epochs-1) mnistTrain.reset();
+        }
 
         Evaluation eval = network.evaluate(mnistTest);
         log.info(eval.stats());

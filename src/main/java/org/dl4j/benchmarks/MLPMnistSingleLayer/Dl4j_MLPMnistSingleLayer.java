@@ -42,7 +42,7 @@ public class Dl4j_MLPMnistSingleLayer{
             double learningRate = 6e-4;
             double momentum = 0.9;
             double l2 = 1e-4;
-            
+
             long duration = System.currentTimeMillis();
 
             //Get the DataSetIterators:
@@ -79,8 +79,10 @@ public class Dl4j_MLPMnistSingleLayer{
 
             log.info("Train model....");
 
-            for(int i=0; i < epochs; i++)
+            for(int i=0; i < epochs; i++) {
                 network.fit(mnistTrain);
+                if (i != epochs-1) mnistTrain.reset();
+            }
 
             log.info("Evaluate model....");
             Evaluation eval = network.evaluate(mnistTest);

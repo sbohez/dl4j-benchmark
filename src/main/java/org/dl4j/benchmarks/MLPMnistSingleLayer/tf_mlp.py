@@ -18,8 +18,8 @@ from six.moves import urllib, xrange
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
 IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE * 1
-CORE_TYPE = 'CPU'
-DTYPE = tf.float64 if (CORE_TYPE == 'CPU') else tf.float32
+CORE_TYPE = 'GPU'
+DTYPE = tf.float32
 
 FLAGS = tf.app.flags.FLAGS
 # max_iteration = (epochs * numExamples)/batchSize (15 * 60000)/128
@@ -31,7 +31,6 @@ tf.app.flags.DEFINE_float('learning_rate', 6e-4, 'Initial learning rate.')
 tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
 tf.app.flags.DEFINE_int('seed', 42, 'Random seed.')
-tf.app.flags.DEFINE_int('dtype', DTYPE, 'Random seed.')
 
 
 # TODO add gpu functionality & confirm accuracy | compare to other examples
@@ -42,7 +41,7 @@ def init_weights(shape):
     (fan_in, fan_out) = shape
     low = -1*np.sqrt(6.0/(fan_in + fan_out)) # {sigmoid:4, tanh:1}
     high = 1*np.sqrt(6.0/(fan_in + fan_out))
-    weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=FLAGS.dtype, seed=FLAGS.seed))
+    weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=DTYPE, seed=FLAGS.seed))
     weight_decay = tf.mul(tf.nn.l2_loss(weights), FLAGS.l2, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
     return weights
@@ -54,12 +53,12 @@ def inference(images):
     # Hidden 1
     with tf.name_scope('hidden1'):
         weights = init_weights([IMAGE_PIXELS, FLAGS.hidden1_units])
-        biases = tf.Variable(tf.zeros([FLAGS.hidden1_units]), dtype=FLAGS.dtype, name='biases')
+        biases = tf.Variable(tf.zeros([FLAGS.hidden1_units]),  name='biases')
         hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
     # Linear
     with tf.name_scope('softmax_linear'):
         weights = tf.Variable([FLAGS.hidden1_units, NUM_CLASSES])
-        biases = tf.Variable(tf.zeros([NUM_CLASSES]), dtype=FLAGS.dtype, name='biases')
+        biases = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
         logits = tf.matmul(hidden1, weights) + biases
     return logits
 
@@ -70,8 +69,8 @@ def run():
 
     # Import data
     mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
-    x = tf.placeholder(tf.float32, [None, 784])
-    y_ = tf.placeholder(tf.float32, [None, 10])
+    x = tf.placeholder(DTYPE, [None, 784])
+    y_ = tf.placeholder(DTYPE, [None, 10])
 
     # Build model
     logits = inference(x)
@@ -92,7 +91,7 @@ def run():
 
     # Test trained model
     correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(y_,1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, DTYPE))
     print(accuracy.eval({x: mnist.test.images, y_: mnist.test.labels}))
     duration = time.time() - start_time
     print('Total train time: %s' % duration)
