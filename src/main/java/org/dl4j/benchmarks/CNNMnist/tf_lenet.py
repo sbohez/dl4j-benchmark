@@ -42,11 +42,14 @@ tf.app.flags.DEFINE_integer('test_batch_size', 100, 'Test batch size. Must divid
 tf.app.flags.DEFINE_string('train_dir', 'data', 'Directory to put the training data.')
 tf.app.flags.DEFINE_boolean('fake_data', False, 'If true, uses fake data for unit testing.')
 tf.app.flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
+tf.app.flags.DEFINE_float('bias_learning_rate', 0.02, 'Initial bias rate.') #
 tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
+tf.app.flags.DEFINE_float('decay_rate', 1e-3, 'Learning rate decay rate.')
+tf.app.flags.DEFINE_float('policy_power', 0.75, 'Policy power.') # current inverse_time_decay is missing this as part of denom calc
 tf.app.flags.DEFINE_int('seed', 42, 'Random seed.')
 
-# TODO add gpu functionality
+# TODO add bias learning rate or remove from caffe and dl4j | install latest github to access inverse | test code
 
 
 def load_data():
@@ -69,7 +72,6 @@ def placeholder_inputs(batch_size):
     labels_placeholder = tf.placeholder(DTYPE, shape=(batch_size))
     return images_placeholder, labels_placeholder
 
-
 def _init_weights(shape):
     (fan_in, fan_out) = shape
     low = -1*np.sqrt(6.0/(fan_in + fan_out)) # {sigmoid:4, tanh:1}
@@ -83,6 +85,7 @@ def _init_weights(shape):
 
 def inference(images, hidden1_units, hidden2_units):
     """Build the MNIST model up to where it may be used for inference.
+        NCHW = number examples, channels, height, width
     """
     with tf.variable_scope('cnn1') as scope:
         depth1 = 20
@@ -95,7 +98,7 @@ def inference(images, hidden1_units, hidden2_units):
                            data_format='NCHW', name='maxpool1')
     with tf.variable_scope('cnn2') as scope:
         depth2 = 50
-        kernel = _init_weights([5, 5, depth1, depth1])
+        kernel = _init_weights([5, 5, depth1, depth2])
         conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], "VALID", data_format='NCHW',
                             use_cudnn_on_gpu=CUDNN)
         biases = tf.Variable(tf.zeros([depth2]), name='biases')
@@ -133,9 +136,11 @@ def training(loss):
     """Sets up the training Ops.
     """
     tf.scalar_summary(loss.op.name, loss)
-    optimizer = tf.train.MomentumOptimizer(FLAGS.learning_rate, FLAGS.momentum)
-    # optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
     global_step = tf.Variable(0, name='global_step', trainable=False)
+    # Not exactly the same as in dl4j and caffe for learning policy inverse
+    # learning_rate = tf.train.inverse_time_decay(FLAGS.learning_rate, global_step, 1, FLAGS.decay_rate, name="inverse_lr_policy")
+    # optimizer = tf.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
+    optimizer = tf.train.MomentumOptimizer(FLAGS.learning_rate, FLAGS.momentum)
     train_op = optimizer.minimize(loss, global_step=global_step)
     return train_op
 
@@ -154,23 +159,12 @@ def run_training(train_data):
         # Add to the Graph the Ops that calculate and apply gradients.
         train_op = training(loss)
 
-        # Build the summary operation based on the TF collection of Summaries.
-        summary_op = tf.merge_all_summaries()
-
         # Add the variable initializer Op.
         init = tf.initialize_all_variables()
-
-        # Create a saver for writing training checkpoints.
-        # saver = tf.train.Saver()
 
         # Create a session for running Ops on the Graph.
         config = tf.ConfigProto(device_count={'GPU': NUM_GPUS})
         sess = tf.InteractiveSession(config=config)
-
-        # Instantiate a SummaryWriter to output summaries and the Graph.
-        summary_writer = tf.train.SummaryWriter(FLAGS.data_dir, sess.graph)
-
-        # And then after everything is built:
 
         # Run the Op to initialize the variables.
         sess.run(init)
