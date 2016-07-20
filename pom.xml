@@ -13,7 +13,7 @@
   <name>Dl4j-Benchmarks</name>
   <description>Examples of training different data sets</description>
   <properties>
-    <nd4j.backend>nd4j-native-platform</nd4j.backend>
+    <nd4j.backend>nd4j-native</nd4j.backend>
     <!--<nd4j.backend>nd4j-cuda-7.5-platform</nd4j.backend>-->
     <nd4j.version>0.4.1-SNAPSHOT</nd4j.version>
     <dl4j.version>0.4.1-SNAPSHOT</dl4j.version>
@@ -42,12 +42,12 @@
     <dependencies>
       <dependency>
         <groupId>org.nd4j</groupId>
-        <artifactId>nd4j-native-platform</artifactId>
+        <artifactId>nd4j-native</artifactId>
         <version>${nd4j.version}</version>
       </dependency>
       <dependency>
         <groupId>org.nd4j</groupId>
-        <artifactId>nd4j-cuda-7.5-platform</artifactId>
+        <artifactId>nd4j-cuda-7.5</artifactId>
         <version>${nd4j.version}</version>
       </dependency>
     </dependencies>

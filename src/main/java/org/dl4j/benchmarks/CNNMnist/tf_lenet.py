@@ -16,7 +16,7 @@ import time
 from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.examples.tutorials.mnist import mnist
 from six.moves import urllib, xrange
-import numpy as np
+import os
 
 NUM_CLASSES = 10
 HEIGHT = 28
@@ -35,6 +35,7 @@ ONE_HOT = True
 FLAGS = tf.app.flags.FLAGS
 # max_iteration = (epochs * numExamples)/batchSize (11 * 60000)/66
 tf.app.flags.DEFINE_integer('max_iter', 10000, 'Number of iterations to run trainer.')
+tf.app.flags.DEFINE_integer('test_iter', 100, 'Number of iterations to run trainer.')
 tf.app.flags.DEFINE_integer('ffn1', 500, 'Number of units in feed forward layer 1.')
 tf.app.flags.DEFINE_integer('batch_size', 66, 'Batch size. Must divide evenly into the dataset sizes.')
 tf.app.flags.DEFINE_integer('test_batch_size', 100, 'Test batch size. Must divide evenly into the dataset sizes.')
@@ -46,7 +47,7 @@ tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
 tf.app.flags.DEFINE_float('decay_rate', 1e-3, 'Learning rate decay rate.')
 tf.app.flags.DEFINE_float('policy_power', 0.75, 'Policy power.') # current inverse_time_decay is missing this as part of denom calc
-tf.app.flags.DEFINE_int('seed', 42, 'Random seed.')
+tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
 
 # TODO add bias learning rate or remove from caffe and dl4j | install latest github to access inverse | test code
 
@@ -54,9 +55,11 @@ tf.app.flags.DEFINE_int('seed', 42, 'Random seed.')
 # cpu BiasOp only support NHWC
 # limits to using tf.float64 on certain functions - avoid
 
+
 def load_data():
     return input_data.read_data_sets(DATA_DIR) if(ONE_HOT == False) else \
         input_data.read_data_sets(DATA_DIR, one_hot=True)
+
 
 def _fill_feed_dict(data_set, images_pl, labels_pl):
     """Fills the feed_dict for training the given step.
@@ -69,6 +72,7 @@ def _fill_feed_dict(data_set, images_pl, labels_pl):
     }
     return feed_dict
 
+
 def _placeholder_inputs():
     """Generate placeholder variables to represent the input tensors.
     """
@@ -77,12 +81,14 @@ def _placeholder_inputs():
         tf.placeholder(DTYPE, [None, NUM_CLASSES])
     return images_placeholder, labels_placeholder
 
+
 def _init_weights(shape):
     weights = tf.get_variable("weights", shape,
                               initializer=tf.contrib.layers.xavier_initializer(uniform=True, seed=FLAGS.seed, dtype=DTYPE), dtype=DTYPE)
     weight_decay = tf.mul(tf.nn.l2_loss(weights), FLAGS.l2, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
     return weights
+
 
 def _inference(images):
     """Build the MNIST model up to where it may be used for inference.
@@ -119,13 +125,13 @@ def _inference(images):
         logits = tf.add(tf.matmul(hidden1, weights), biases, name=scope.name)
     return logits
 
+
 def _score(logits, labels):
     """Calculates the loss from the logits and the labels.
     """
-    pdb.set_trace()
-    labels = tf.to_int32(labels)
-    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels, name='xentropy')
-    #     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, labels, name='xentropy') # works one hot
+    labels = tf.to_int32(labels) if(ONE_HOT == False) else labels
+    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels, name='xentropy') if(ONE_HOT == False) else \
+        tf.nn.softmax_cross_entropy_with_logits(logits, labels, name='xentropy') # works one hot
     loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
     return loss
 
@@ -174,36 +180,33 @@ def _evaluation_straight(logits, labels):
     """Evaluate the quality of the logits at predicting the label.
     """
     labels = tf.to_int32(labels)
-    correct = tf.nn.in_top_k(logits, labels, 10) # needs labels to be rank 1 so not one hot
+    correct = tf.nn.in_top_k(logits, labels, 10) # needs labels to be rank
     return tf.reduce_sum(tf.cast(correct, tf.int32))
 
 def _prediction(logits, labels):
     correct_pred = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
-    return tf.reduce_mean(tf.cast(correct_pred, tf.float32)) # TODO return sum instead...
+    return tf.reduce_sum(tf.cast(correct_pred, tf.float32))
 
 def do_eval(sess, logits, images_placeholder, labels_placeholder, data_set):
     """Runs one evaluation against the full epoch of data.
     """
+    correct_count = 0
+    num_examples = data_set.num_examples
     if(ONE_HOT == False):
-        true_count = 0  # Counts the number of correct predictions.
-        num_examples = data_set.num_examples
+        correct_count = 0  # Counts the number of correct predictions.
         for _ in xrange(FLAGS.test_iter):
             feed_dict = _fill_feed_dict(data_set, images_placeholder, labels_placeholder)
-            true_count += sess.run(_evaluation(logits, labels_placeholder), feed_dict=feed_dict)
-        precision = true_count / num_examples
-        print('  Num examples: %d  Num correct: %d  Precision @ 1: %0.04f' %
-              (num_examples, true_count, precision))
+            correct_count += sess.run(_evaluation_straight(logits, labels_placeholder), feed_dict=feed_dict)
+        print("Accuracy 1: %0.04f" % (true_count / num_examples))
     else:
         for _ in xrange(FLAGS.test_iter):
             feed_dict = _fill_feed_dict(data_set, images_placeholder, labels_placeholder)
-            accuracy += sess.run(_prediction(logits, labels_placeholder),
-                                 feed_dict=feed_dict)
-        print("accuracy", (accuracy/FLAGS.test_ier))
+            correct_count += sess.run(_prediction(logits, labels_placeholder), feed_dict=feed_dict)
+        print("Accuracy: ", (correct_count / num_examples)) #(accuracy/FLAGS.test_iter))
 #         # Example of getting the predictions
 #         prediction = tf.argmax(labels_placeholder,1)
 #         print("predictions", prediction.eval(feed_dict=_fill_feed_dict(data_sets.test, images_placeholder, labels_placeholder),
 #                          session=sess))
-
 
 
 def main():
