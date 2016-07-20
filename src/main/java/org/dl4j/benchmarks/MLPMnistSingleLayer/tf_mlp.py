@@ -30,16 +30,14 @@ DATA_DIR = os.getcwd() + "src/main/resources/tf_data/"
 FLAGS = tf.app.flags.FLAGS
 # max_iteration = (epochs * numExamples)/batchSize (15 * 60000)/128
 tf.app.flags.DEFINE_integer('max_iter', 7032, 'Number of iterations to run trainer.')
+tf.app.flags.DEFINE_integer('test_iter', 78, 'Number of iterations to run trainer.')
 tf.app.flags.DEFINE_integer('hidden1_units', 1000, 'Number of units in hidden layer 1.')
 tf.app.flags.DEFINE_integer('batch_size', 128, 'Batch size. Must divide evenly into the dataset sizes.')
 tf.app.flags.DEFINE_string('train_dir', 'data', 'Directory to put the training data.')
 tf.app.flags.DEFINE_float('learning_rate', 6e-4, 'Initial learning rate.')
 tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
-tf.app.flags.DEFINE_int('seed', 42, 'Random seed.')
-
-
-# TODO add gpu functionality & confirm accuracy
+tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
 
 
 def _init_weights(shape):
@@ -53,7 +51,7 @@ def _init_weights(shape):
     return weights
 
 
-def inference(images):
+def _inference(images):
     """Build the MNIST model up to where it may be used for inference.
     """
     # Hidden 1
@@ -68,6 +66,18 @@ def inference(images):
         logits = tf.matmul(hidden1, weights) + biases
     return logits
 
+def _setup_train(y, y_):
+    cross_entropy = -tf.reduce_sum(y_*tf.log(y)) # softmax & cross entropy
+    optimizer = tf.train.MomentumOptimizer(FLAGS.learning_rate, FLAGS.momentum)
+    global_step = tf.Variable(0, name='global_step', trainable=False)
+    return optimizer.minimize(cross_entropy, global_step=global_step)
+
+def _evaluation(logits, labels):
+    """Evaluate the quality of the logits at predicting the label.
+    """
+    correct_pred = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
+    return tf.reduce_sum(tf.cast(correct_pred, tf.float32))
+
 
 def run():
     start_time = time.time()
@@ -79,13 +89,10 @@ def run():
     y_ = tf.placeholder(DTYPE, [None, 10])
 
     # Build model
-    logits = inference(x)
+    y = _inference(x)
 
     # Define loss and optimizer
-    cross_entropy = -tf.reduce_sum(y_*tf.log(logits)) # softmax & cross entropy
-    optimizer = tf.train.MomentumOptimizer(FLAGS.learning_rate, FLAGS.momentum)
-    global_step = tf.Variable(0, name='global_step', trainable=False)
-    train_step = optimizer.minimize(cross_entropy, global_step=global_step)
+    train_step = _setup_train(y, y_)
 
     # Train
     # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.01)
@@ -99,9 +106,13 @@ def run():
         train_step.run({x: batch_xs, y_: batch_ys})
 
     # Test trained model
-    correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(y_,1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, dtype=DTYPE))
-    print(accuracy.eval({x: mnist.test.images, y_: mnist.test.labels}))
+    correct_count = 0
+    num_examples = mnist.test.num_examples
+    # Define evaluation
+    for _ in xrange(FLAGS.test_iter):
+        batch_xs, batch_ys = mnist.test.next_batch(FLAGS.batch_size)
+        correct_count += sess.run(_evaluation(y, y_), {x: batch_xs, y_: batch_ys})
+    print("Accuracy: ", (correct_count / num_examples)) #(accuracy/FLAGS.test_iter))
     duration = time.time() - start_time
     print('Total train time: %s' % (duration * 1000))
     sess.close
