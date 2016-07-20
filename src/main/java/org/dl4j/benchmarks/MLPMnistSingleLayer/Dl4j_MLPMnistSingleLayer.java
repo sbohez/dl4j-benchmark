@@ -11,8 +11,10 @@ import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
-import org.nd4j.linalg.lossfunctions.LossFunctions;
+import org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,14 +34,14 @@ public class Dl4j_MLPMnistSingleLayer{
 //                    .enableDebug(false)
 //                    .setVerbose(false);
 
-            final int numRows = 28;
-            final int numColumns = 28;
+            final int height = 28;
+            final int width = 28;
             int outputNum = 10;
             int batchSize = 128;
             int rngSeed = 123;
             int epochs = 15;
             int hiddenNodes = 1000;
-            double learningRate = 6e-4;
+            double learningRate = 6e-3;
             double momentum = 0.9;
             double l2 = 1e-4;
 
@@ -53,6 +55,8 @@ public class Dl4j_MLPMnistSingleLayer{
 //            log.info("Build model....");
             MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
                     .seed(rngSeed)
+                    .activation("relu")
+                    .weightInit(WeightInit.XAVIER)
                     .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                     .iterations(1)
                     .learningRate(learningRate)
@@ -60,16 +64,13 @@ public class Dl4j_MLPMnistSingleLayer{
                     .regularization(true).l2(l2)
                     .list()
                     .layer(0, new DenseLayer.Builder()
-                            .nIn(numRows * numColumns)
+                            .nIn(height * width)
                             .nOut(hiddenNodes)
-                            .activation("relu")
-                            .weightInit(WeightInit.XAVIER)
                             .build())
-                    .layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+                    .layer(1, new OutputLayer.Builder(LossFunction.NEGATIVELOGLIKELIHOOD)
                             .nIn(hiddenNodes)
                             .nOut(outputNum)
                             .activation("softmax")
-                            .weightInit(WeightInit.XAVIER)
                             .build())
                     .pretrain(false).backprop(true)
                     .build();
@@ -78,7 +79,6 @@ public class Dl4j_MLPMnistSingleLayer{
             network.init();
 
 //            log.info("Train model....");
-
             for(int i=0; i < epochs; i++) {
                 network.fit(mnistTrain);
                 if (i != epochs-1) mnistTrain.reset();
@@ -86,8 +86,9 @@ public class Dl4j_MLPMnistSingleLayer{
 
 //            log.info("Evaluate model....");
             Evaluation eval = network.evaluate(mnistTest);
+            log.info("MLN eval: " + eval.stats());
 
-            log.info(eval.stats());
+
             log.info("****************Example finished********************");
             log.info("Total time: {}", (System.currentTimeMillis() - duration));
 

@@ -12,6 +12,7 @@ http://tensorflow.org/tutorials/mnist/beginners/index.md
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 import time
+import os
 import numpy as np
 from six.moves import urllib, xrange
 
@@ -24,6 +25,7 @@ DTYPE = tf.float32
 # '/gpu:1' if multiple
 DEVICE = '/cpu:0' if(CORE_TYPE == 'CPU') else '/gpu:0'
 NUM_GPUS = 0 if(CORE_TYPE == 'CPU') else 1
+DATA_DIR = os.getcwd() + "src/main/resources/tf_data/"
 
 FLAGS = tf.app.flags.FLAGS
 # max_iteration = (epochs * numExamples)/batchSize (15 * 60000)/128
@@ -45,7 +47,7 @@ def _init_weights(shape):
     (fan_in, fan_out) = shape
     low = -1*np.sqrt(6.0/(fan_in + fan_out)) # {sigmoid:4, tanh:1}
     high = 1*np.sqrt(6.0/(fan_in + fan_out))
-    weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, seed=FLAGS.seed))
+    weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, seed=FLAGS.seed, dtype=DTYPE))
     weight_decay = tf.mul(tf.nn.l2_loss(weights), FLAGS.l2, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
     return weights
@@ -72,7 +74,7 @@ def run():
     # Hyper-parameters
 
     # Import data
-    mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
+    mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     x = tf.placeholder(DTYPE, [None, 784])
     y_ = tf.placeholder(DTYPE, [None, 10])
 

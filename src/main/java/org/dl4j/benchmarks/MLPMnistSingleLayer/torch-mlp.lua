@@ -24,7 +24,7 @@ opt = {
     row = 28,
     col = 28,
     ninputs = ndim*row*col,
-    nhidden = ninputs/2,
+    nhidden = 1000,
 
 }
 
@@ -65,9 +65,9 @@ end
 --print('Build model')
 model = nn.Sequential()
 model:add(nn.Reshape(opt.ninputs))
-model:add(nn.Linear(opt.ninputs,nhidden))
+model:add(nn.Linear(opt.ninputs,opt.nhidden))
 model:add(Relu())
-model:add(nn.Linear(opt.nhidden,noutputs))
+model:add(nn.Linear(opt.nhidden,opt.noutputs))
 model:add(nn.LogSoftMax())
 criterion =  nn.ClassNLLCriterion()
 
@@ -96,19 +96,18 @@ function train()
     shuffle = torch.randperm(trsize)
 
     -- do one epoch
-    print('Doing epoch on training data')
-    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. batchSize .. ']')
-    for t=1,trsize,batchSize do
+    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+    for t=1,trsize,opt.batchSize do
 
         --display progess
-        xlua.progress(t,trsize)
+        xlua.progress(t, trsize)
 
 
         --create a minibatch
         local inputs = {}
         local targets = {}
         -- print('data',trainData)
-        for i = t, math.min(t+batchSize-1,trsize) do
+        for i = t, math.min(t+opt.batchSize-1,trsize) do
 
             --load new samples
 
@@ -173,7 +172,50 @@ function train()
 
 end
 
---print('Evaluate')
+function test(dataset)
+    --print('Evaluate')
+    local time = sys.clock()
+
+    -- test over given dataset
+    print('<trainer> on testing Set:')
+    for t = 1,dataset:size(),opt.batchSize do
+        -- disp progress
+        xlua.progress(t, dataset:size())
+
+        -- create mini batch
+        local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
+        local targets = torch.Tensor(opt.batchSize)
+        local k = 1
+        for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
+            -- load new sample
+            local sample = dataset[i]
+            local input = sample[1]:clone()
+            local _,target = sample[2]:clone():max(1)
+            target = target:squeeze()
+            inputs[k] = input
+            targets[k] = target
+            k = k + 1
+        end
+
+        -- test samples
+        local preds = model:forward(inputs)
+
+        -- confusion:
+        for i = 1,opt.batchSize do
+            confusion:add(preds[i], targets[i])
+        end
+    end
+
+    -- timing
+    time = sys.clock() - time
+    time = time / dataset:size()
+    print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')
+
+    -- print confusion matrix
+    print(confusion)
+    testLogger:add{['% mean class accuracy (test set)'] = confusion.totalValid * 100}
+    confusion:zero()
+end
 
 for i=1, opt.max_epoch do
     train()
@@ -182,6 +224,6 @@ end
 
 
 
-}
+
 
 
