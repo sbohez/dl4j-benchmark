@@ -13,6 +13,8 @@
 -- 4/ description of training and test procedures
 --
 -- Clement Farabet
+--
+-- https://github.com/torch/demos/blob/master/train-a-digit-classifier/train-on-mnist.lua
 ----------------------------------------------------------------------
 
 require 'torch'
@@ -44,7 +46,7 @@ local opt = lapp[[
 ]]
 
 -- fix seed
-torch.manualSeed(1)
+torch.manualSeed(42)
 
 -- threads
 torch.setnumthreads(opt.threads)
@@ -78,7 +80,7 @@ if opt.network == '' then
         -- convolutional network
         ------------------------------------------------------------
         -- stage 1 : mean suppresion -> filter bank -> squashing -> max pooling
-        model:add(nn.SpatialConvolutionMM(1, 32, 5, 5))
+        model:add(nn.SpatialConvolutionMM(1, 20, 5, 5))
         model:add(nn.Tanh())
         model:add(nn.SpatialMaxPooling(3, 3, 3, 3))
         -- stage 2 : mean suppresion -> filter bank -> squashing -> max pooling
