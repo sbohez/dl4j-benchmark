@@ -63,13 +63,17 @@ model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
 -- stage 3 : standard 2-layer MLP:
 model:add(nn.Reshape(50*4*4))
 model:add(nn.Linear(50*4*4, 500))
-model:add(nn.Relu())
+model:add(nn.Relu(true))
 model:add(nn.Linear(500, #classes))
 
---flattens & creates views for optim to process param and gradients
-parameters,gradParameters = model:getParameters()
+-- reset weights TODO figure out if this works
+method = 'xavier'
+model_new = require('weight-init')(model, method)
 
-model:add(nn.LogSoftMax())
+--flattens & creates views for optim to process param and gradients
+parameters,gradParameters = model_new:getParameters()
+
+model_new:add(nn.LogSoftMax())
 criterion = nn.ClassNLLCriterion()
 
 --print(model)
@@ -80,7 +84,7 @@ function train(dataset)
     -- epoch tracker
     epoch = epoch or 1
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
-    model:training()
+    model_new:training()
 
 --    loops from 1 to full dataset size by batchsize
     for t = 1,opt.numExamples,opt.batchSize do
@@ -113,12 +117,12 @@ function train(dataset)
             gradParameters:zero()
 
             -- evaluate function for complete mini batch
-            local outputs = model:forward(inputs)
+            local outputs = model_new:forward(inputs)
             local f = criterion:forward(outputs, targets)
 
             -- estimate df/dW
             local df_do = criterion:backward(outputs, targets)
-            model:backward(inputs, df_do)
+            model_new:backward(inputs, df_do)
 
             -- penalties (L1 and L2):
             local norm= torch.norm
@@ -166,7 +170,7 @@ function test(dataset)
         end
 
         -- test samples
-        local preds = model:forward(inputs)
+        local preds = model_new:forward(inputs)
 
         -- confusion:
         for i = 1,opt.batchSize do

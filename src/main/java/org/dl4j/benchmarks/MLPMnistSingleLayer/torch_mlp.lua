@@ -67,7 +67,7 @@ classes = {'1','2','3','4','5','6','7','8','9','10'}
 model = nn.Sequential()
 model:add(nn.Reshape(opt.ninputs))
 model:add(nn.Linear(opt.ninputs,opt.nhidden))
-model:add(Relu())
+model:add(nn.Relu(true))
 model:add(nn.Linear(opt.nhidden,opt.noutputs))
 
 parameters,gradParameters = model:getParameters()
