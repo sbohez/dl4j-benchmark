@@ -63,7 +63,7 @@ model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
 -- stage 3 : standard 2-layer MLP:
 model:add(nn.Reshape(50*4*4))
 model:add(nn.Linear(50*4*4, 500))
-model:add(nn.Relu(true))
+model:add(nn.ReLU(true))
 model:add(nn.Linear(500, #classes))
 
 -- reset weights TODO figure out if this works
