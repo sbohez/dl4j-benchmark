@@ -7,6 +7,7 @@ require 'torch'
 require 'nn'
 require 'optim'
 require 'src/main/resources/torch-data/dataset-mnist'
+--mnist = require 'mnist' -- alternative but was giving bad results
 
 torch.manualSeed(42)
 torch.setdefaulttensortype('torch.FloatTensor')
@@ -15,7 +16,7 @@ torch.setdefaulttensortype('torch.FloatTensor')
 opt = {
     gpu = true,
     max_epoch = 11,
-    numExamples = 59904 , -- numExamples
+    numExamples = 60000 , -- numExamples
     numTestExamples = 10000,
     batchSize = 66,
     testBatchSize = 100,
@@ -24,6 +25,9 @@ opt = {
     height = 32,
     width = 32,
     ninputs = 32*32,
+--    height = 28,
+--    width = 28,
+--    ninputs = 28*28,
     coefL2 = 5e-4
 }
 
@@ -50,6 +54,10 @@ mean = testData.data:mean()
 std =  testData.data:std()
 testData:normalizeGlobal(mean, std)
 
+--trainData = mnist.traindataset()
+--testData = mnist.testdataset()
+
+
 ------------------------------------------------------------
 -- print('Build model')
 model = nn.Sequential()
@@ -62,19 +70,41 @@ model:add(nn.SpatialConvolutionMM(20, 50, 5, 5))
 model:add(nn.Identity())
 model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
 -- stage 3 : standard 2-layer MLP:
-model:add(nn.Reshape(50*4*4))
-model:add(nn.Linear(50*4*4, 500))
-model:add(nn.ReLU(true))
+model:add(nn.Reshape(50*5*5))
+model:add(nn.Linear(50*5*5, 500))
+--model:add(nn.Reshape(50*4*4))
+--model:add(nn.Linear(50*4*4, 500))
+
+model:add(nn.ReLU())
 model:add(nn.Linear(500, #classes))
 
--- reset weights TODO figure out if this works
-method = 'xavier'
-model_new = require('weight-init')(model, method)
+--function w_init_xavier(fan_in, fan_out)
+--    return math.sqrt(2/(fan_in + fan_out))
+--end
+--
+--
+--function w_init_xavier_caffe(fan_in, fan_out)
+--    return math.sqrt(1/fan_in)
+--end
+--
+--for i=1, #model.modules do
+--    method = w_init_xavier_caffe
+--    local m = model.modules[i]
+--    if m.__typename == 'nn.SpatialConvolutionMM' then
+--        m:reset(method(m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW))
+--    elseif m.__typename == 'nn.Linear' then
+--        m:reset(method(m.weight:size(2), m.weight:size(1)))
+--    end
+--
+--    if m.bias then
+--        m.bias:zero()
+--    end
+--end
 
 --flattens & creates views for optim to process param and gradients
-parameters,gradParameters = model_new:getParameters()
+parameters,gradParameters = model:getParameters()
 
-model_new:add(nn.LogSoftMax())
+model:add(nn.LogSoftMax())
 criterion = nn.ClassNLLCriterion()
 
 --print(model)
@@ -83,7 +113,7 @@ criterion = nn.ClassNLLCriterion()
 -- print('Train model')
 function train(dataset)
 
-    model_new:training()
+    model:training()
 
 --    loops from 1 to full dataset size by batchsize
     for t = 1,opt.numExamples,opt.batchSize do
@@ -96,11 +126,24 @@ function train(dataset)
             local sample = dataset[i]
             local input = sample[1]:clone()
             local _,target = sample[2]:clone():max(1)
-            target = target:squeeze()
+--            target = target:squeeze()
             inputs[k] = input
             targets[k] = target
             k = k + 1
         end
+        print(targets)
+
+--        for i = t,math.min(t+opt.batchSize-1,dataset.size) do
+--            local sample = dataset[i]
+--            local input = sample.x:clone()
+--            local target = sample.y+1
+--            inputs[k] = input
+--            if target <= 0 then
+--                target = 1
+--            end
+--            targets[k] = target
+--            k = k + 1
+--        end
 
         -- create closure to evaluate f(X) and df/dX
         local feval = function(x)
@@ -116,12 +159,12 @@ function train(dataset)
             gradParameters:zero()
 
             -- evaluate function for complete mini batch
-            local outputs = model_new:forward(inputs)
+            local outputs = model:forward(inputs)
             local f = criterion:forward(outputs, targets)
 
             -- estimate df/dW
             local df_do = criterion:backward(outputs, targets)
-            model_new:backward(inputs, df_do)
+            model:backward(inputs, df_do)
 
             -- penalties (L1 and L2):
             local norm= torch.norm
@@ -165,9 +208,26 @@ function test(dataset)
             targets[k] = target
             k = k + 1
         end
+--    for t=1,dataset.size,opt.batchSize do
+--
+--        -- create mini batch
+--        local inputs = torch.Tensor(opt.testBatchSize,1,geometry[1],geometry[2])
+--        local targets = torch.Tensor(opt.testBatchSize)
+--        local k = 1
+--        for i = t,math.min(t+opt.testBatchSize-1,dataset.size) do
+--            local sample = dataset[i]
+--            local input = sample.x:clone()
+--            local target = sample.y+1
+--            if target <=0 then
+--                target = 1
+--            end
+--            inputs[k] = input
+--            targets[k] = target
+--            k = k + 1
+--        end
 
         -- test samples
-        local preds = model_new:forward(inputs)
+        local preds = model:forward(inputs)
 
         -- confusion:
         for i = 1,opt.batchSize do
@@ -185,5 +245,6 @@ time = sys.clock()
 for _ = 1,opt.max_epoch do
     train(trainData)
 end
+print("NOW")
 test(testData)
 print("Total time: ", (sys.clock() - time))

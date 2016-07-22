@@ -1,3 +1,6 @@
+-- Reference Code: https://github.com/torch/demos/blob/master/train-a-digit-classifier/train-on-mnist.lua
+-- Reference Xaviar: https://github.com/e-lab/torch-toolbox/blob/master/Weight-init/weight-init.lua#L19
+
 --require 'sys'
 --require 'cunn'
 --require 'ccn2'
@@ -43,8 +46,7 @@ optimState = {
 }
 
 classes = {'1','2','3','4','5','6','7','8','9','10'}
-geometry = {opt.height,opt.width }
-
+geometry = {opt.height,opt.width}
 
 ------------------------------------------------------------
 -- print('Load data')
@@ -61,21 +63,42 @@ testData:normalizeGlobal(mean, std)
 --trainData = mnist.traindataset()
 --testData = mnist.testdataset()
 
-
 ------------------------------------------------------------
 -- print('Build model')
+
 model = nn.Sequential()
 model:add(nn.Reshape(opt.ninputs))
 model:add(nn.Linear(opt.ninputs,opt.nhidden))
-model:add(nn.ReLU(true))
+model:add(nn.ReLU())
 model:add(nn.Linear(opt.nhidden,opt.noutputs))
+
+function w_init_xavier(fan_in, fan_out)
+    return math.sqrt(2/(fan_in + fan_out))
+end
+
+
+function w_init_xavier_caffe(fan_in, fan_out)
+    return math.sqrt(1/fan_in)
+end
+
+for i=1, #model.modules do
+    method = w_init_xavier_caffe
+    local m = model.modules[i]
+    if m.__typename == 'nn.SpatialConvolutionMM' then
+        m:reset(method(m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW))
+    elseif m.__typename == 'nn.Linear' then
+        m:reset(method(m.weight:size(2), m.weight:size(1)))
+    end
+
+    if m.bias then
+        m.bias:zero()
+    end
+end
 
 parameters,gradParameters = model:getParameters()
 
 model:add(nn.LogSoftMax())
 criterion =  nn.ClassNLLCriterion()
-
--- TODO add Xavier
 
 ------------------------------------------------------------
 -- print('Train model')
@@ -88,7 +111,7 @@ function train(dataset)
 
         --create a minibatch
         local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
-        local targets = torch.Tensor(opt.batchSize)
+        local targets = torch.zeros(opt.batchSize)
         local k = 1
         for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
             -- load new sample
@@ -106,7 +129,7 @@ function train(dataset)
 --            local target = sample.y+1
 --            inputs[k] = input
 --            if target <= 0 then
---                target = 1 -- 59905 stops converting to int?
+--                print(target) -- 59905 stops converting to int?
 --            end
 --            targets[k] = target
 --            k = k + 1
@@ -152,7 +175,7 @@ end
 confusion = optim.ConfusionMatrix(classes)
 
 function test(dataset)
-    -- test over given dataset
+--     test over given dataset
     for t = 1,dataset:size(),opt.batchSize do
 
         -- create mini batch
@@ -179,9 +202,6 @@ function test(dataset)
 --            local sample = dataset[i]
 --            local input = sample.x:clone()
 --            local target = sample.y+1
---            if target <=0 then
---                target = 1
---            end
 --            inputs[k] = input
 --            targets[k] = target
 --            k = k + 1
@@ -197,7 +217,7 @@ function test(dataset)
     end
 
     -- print confusion matrix
---    print(confusion)
+    print(confusion)
     print('Accuracy: ', confusion.totalValid * 100)
     confusion:zero()
 end
