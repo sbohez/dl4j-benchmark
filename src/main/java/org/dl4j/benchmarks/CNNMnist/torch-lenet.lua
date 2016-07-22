@@ -22,12 +22,9 @@ opt = {
     testBatchSize = 100,
     noutputs = 10,
     channels = 1,
-    height = 32,
-    width = 32,
-    ninputs = 32*32,
---    height = 28,
---    width = 28,
---    ninputs = 28*28,
+    height = 28,
+    width = 28,
+    ninputs = 28*28,
     coefL2 = 5e-4
 }
 
@@ -47,12 +44,12 @@ geometry = {opt.height,opt.width }
 trainData = mnist.loadTrainSet(opt.numExamples, geometry)
 mean = trainData.data:mean()
 std =  trainData.data:std()
-trainData:normalizeGlobal(mean, std)
+trainData:normalizeGlobal(mean, std):resize(opt.channels, opt.height, opt.width)
 
 testData = mnist.loadTestSet(opt.numTestExamples, geometry)
 mean = testData.data:mean()
 std =  testData.data:std()
-testData:normalizeGlobal(mean, std)
+testData:normalizeGlobal(mean, std):resize(opt.channels, opt.height, opt.width)
 
 --trainData = mnist.traindataset()
 --testData = mnist.testdataset()
@@ -131,8 +128,6 @@ function train(dataset)
             targets[k] = target
             k = k + 1
         end
-        print(targets)
-
 --        for i = t,math.min(t+opt.batchSize-1,dataset.size) do
 --            local sample = dataset[i]
 --            local input = sample.x:clone()
@@ -230,7 +225,7 @@ function test(dataset)
         local preds = model:forward(inputs)
 
         -- confusion:
-        for i = 1,opt.batchSize do
+        for i = 1,opt.testBatchSize do
             confusion:add(preds[i], targets[i])
         end
     end
@@ -245,6 +240,5 @@ time = sys.clock()
 for _ = 1,opt.max_epoch do
     train(trainData)
 end
-print("NOW")
 test(testData)
 print("Total time: ", (sys.clock() - time))

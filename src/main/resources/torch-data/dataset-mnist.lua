@@ -16,6 +16,7 @@ function mnist.download()
         local remote = mnist.path_remote
         local tar = paths.basename(remote)
         os.execute('wget ' .. remote .. '; ' .. 'tar xvf ' .. tar .. '; rm ' .. tar)
+        os.execute('mv mnist.t7/* src/main/resources/torch-data ; rm -rf mnist.t7')
     end
 end
 
@@ -69,6 +70,10 @@ function mnist.loadDataset(fileName, maxLoad)
 
     function dataset:size()
         return nExample
+    end
+
+    function dataset:transform(channels_, height_, width_)
+        data:resize(channels_, height_, width_)
     end
 
     local labelvector = torch.zeros(10)
