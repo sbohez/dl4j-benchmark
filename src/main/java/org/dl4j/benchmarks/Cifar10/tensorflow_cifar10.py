@@ -373,7 +373,7 @@ def train():
                 summary_writer.add_summary(summary_str, iter)
 
             # Save the model checkpoint periodically.
-            if iter % 1000 == 0 or (iter + 1) == FLAGS.max_steps:
+            if iter % 1000 == 0 or (iter + 1) == FLAGS.max_iter:
                 checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=iter)
 
