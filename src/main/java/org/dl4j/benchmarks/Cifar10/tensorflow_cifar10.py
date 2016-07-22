@@ -4,15 +4,17 @@ Tensorflow CIFAR-10
 Reference: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/models/image/cifar10
 """
 
+import tensorflow as tf
 import os
 import time
-from datetime import datetime
 import sys
+import re
 import tarfile
-import tensorflow as tf
 from six.moves import urllib, xrange
-from tensorflow.models.image.cifar10 import cifar10_input
 import numpy as np
+from datetime import datetime
+import math
+from tensorflow.models.image.cifar10 import cifar10_input
 
 # TODO add gpu & connect train with eval
 
@@ -22,41 +24,61 @@ NUM_CLASSES = cifar10_input.NUM_CLASSES
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 BASE_DIR = os.environ['HOME'] + '/cifar'
-# If a model is trained with multiple GPUs, prefix all Op names with tower_name
-# to differentiate the operations. Note that this prefix is removed from the
-# names of the summaries when visualizing a model.
-TOWER_NAME = 'tensor_flow_cifar'
-
-DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
-
-
-FLAGS = tf.app.flags.FLAGS
-# Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 128, """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_string('data_dir', BASE_DIR + '', """Path to the CIFAR-10 data directory.""")
-tf.app.flags.DEFINE_boolean('use_fp16', False, """Train the model using fp16.""")
-tf.app.flags.DEFINE_string('train_dir', '/tmp/train', """Path to store training data.""")
-# max_iteration = (epochs * numExamples)/batchSize ( * 50000)/128
-tf.app.flags.DEFINE_integer('max_iter', 1000000, """Number of epochs.""")
-tf.app.flags.DEFINE_boolean('log_device_placement', False,"""Whether to log device placement.""")
-tf.app.flags.DEFINE_string('eval_dir', BASE_DIR + '/cifar10_eval',"""Directory where to write event logs.""")
-tf.app.flags.DEFINE_string('checkpoint_dir', BASE_DIR + 'cifar10_train', """Directory where to read model checkpoints.""")
-tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5, """How often to run the eval.""")
-tf.app.flags.DEFINE_integer('num_examples', 10000, """Number of examples to run.""")
-tf.app.flags.DEFINE_boolean('run_once', True,"""Whether to run eval only once.""")
-tf.app.flags.DEFINE_float('learning_rate', 0.1, 'Initial learning rate.')
-# tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
-tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
 
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
+INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
+
+# If a model is trained with multiple GPUs, prefix all Op names with tower_name
+# to differentiate the operations. Note that this prefix is removed from the
+# names of the summaries when visualizing a model.
+TOWER_NAME = 'tensor_flow_cifar_tower'
+
+DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
+
+FLAGS = tf.app.flags.FLAGS
+# Basic model parameters.
+tf.app.flags.DEFINE_integer('batch_size', 128, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_string('data_dir', BASE_DIR + '/cifar-10-batches-bin', """Path to the CIFAR-10 data directory.""")
+tf.app.flags.DEFINE_boolean('use_fp16', False, """Train the model using fp16.""")
+tf.app.flags.DEFINE_string('train_dir', '/cifar10_train', """Path to store training data.""")
+# max_iteration = (epochs * numExamples)/batchSize ( * 50000)/128
+tf.app.flags.DEFINE_integer('max_iter', 1000000, """Number of epochs.""")
+tf.app.flags.DEFINE_boolean('log_device_placement', False,"""Whether to log device placement.""")
+tf.app.flags.DEFINE_string('eval_dir', BASE_DIR + '/cifar10_eval',"""Directory where to write event logs.""")
+tf.app.flags.DEFINE_string('checkpoint_dir', BASE_DIR + '/cifar10_train', """Directory where to read model checkpoints.""")
+tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5, """How often to run the eval.""")
+tf.app.flags.DEFINE_integer('num_examples', 10000, """Number of examples to run.""")
+tf.app.flags.DEFINE_boolean('run_once', False,"""Whether to run eval only once.""")
+# tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
+tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
 
 
-def download_and_extract(data_dir):
+# Summary
+
+def _activation_summary(x):
+    """Helper to create summaries for activations.
+    Creates a summary that provides a histogram of activations.
+    Creates a summary that measure the sparsity of activations.
+    Args:
+      x: Tensor
+    Returns:
+      nothing
+    """
+    # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
+    # session. This helps the clarity of presentation on tensorboard.
+    tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
+    tf.histogram_summary(tensor_name + '/activations', x)
+    tf.scalar_summary(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
+
+
+# Data Load
+
+def download_and_extract():
     """Download and extract the tarball."""
-    dest_directory = data_dir
+    dest_directory = FLAGS.data_dir
     if not os.path.exists(dest_directory):
         os.makedirs(dest_directory)
     filename = DATA_URL.split('/')[-1]
@@ -76,15 +98,14 @@ def download_and_extract(data_dir):
 def get_inputs(train):
     """Construct distorted input for CIFAR using the Reader ops.
     """
-    data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
     images, labels = cifar10_input.distorted_inputs(data_dir=FLAGS.data_dir, batch_size=FLAGS.batch_size) \
-        if train else cifar10_input.inputs(eval_data=train, data_dir=data_dir, batch_size=FLAGS.batch_size)
+        if train else cifar10_input.inputs(eval_data=train, data_dir=FLAGS.data_dir, batch_size=FLAGS.batch_size)
     if FLAGS.use_fp16:
         images = tf.cast(images, tf.float16)
         labels = tf.cast(labels, tf.float16)
     return images, labels
 
-
+# TODO generalize for gpu
 def _variable_on_cpu(name, shape, initializer):
     """Helper to create a Variable stored on CPU memory.
     """
@@ -108,6 +129,8 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
     return var
 
 
+# Model Build
+
 def inference(images):
     """Build the CIFAR-10 model.
     """
@@ -126,8 +149,9 @@ def inference(images):
         biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.0))
         bias = tf.nn.bias_add(conv, biases)
         conv1 = tf.nn.relu(bias, name=scope.name)
+        _activation_summary(conv1)
 
-    # pool1
+        # pool1
     pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1],
                            padding='SAME', name='pool1')
     # norm1
@@ -144,6 +168,7 @@ def inference(images):
         biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.1))
         bias = tf.nn.bias_add(conv, biases)
         conv2 = tf.nn.relu(bias, name=scope.name)
+        _activation_summary(conv2)
 
     # norm2
     norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
@@ -161,6 +186,7 @@ def inference(images):
                                               stddev=0.04, wd=0.004)
         biases = _variable_on_cpu('biases', [384], tf.constant_initializer(0.1))
         local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
+        _activation_summary(local3)
 
     # local4
     with tf.variable_scope('local4') as scope:
@@ -168,6 +194,7 @@ def inference(images):
                                               stddev=0.04, wd=0.004)
         biases = _variable_on_cpu('biases', [192], tf.constant_initializer(0.1))
         local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
+        _activation_summary(local4)
 
     # softmax, i.e. softmax(WX + b)
     with tf.variable_scope('softmax_linear') as scope:
@@ -176,6 +203,7 @@ def inference(images):
         biases = _variable_on_cpu('biases', [NUM_CLASSES],
                                   tf.constant_initializer(0.0))
         softmax_linear = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
+        _activation_summary(softmax_linear)
 
     return softmax_linear
 
@@ -199,10 +227,6 @@ def _add_loss_summaries(total_loss):
     """Add summaries for losses in CIFAR-10 model.
     Generates moving average for all losses and associated summaries for
     visualizing the performance of the network.
-    Args:
-      total_loss: Total loss from loss().
-    Returns:
-      loss_averages_op: op for generating moving averages of losses.
     """
     # Compute the moving average of all individual losses and the total loss.
     loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
@@ -220,7 +244,9 @@ def _add_loss_summaries(total_loss):
     return loss_averages_op
 
 
-def optimizer(total_loss, global_step):
+# Model Train
+
+def train_setup(total_loss, global_step):
     """Optimize CIFAR-10 model.
     """
     # Variables that affect learning rate.
@@ -247,13 +273,13 @@ def optimizer(total_loss, global_step):
     apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
 
     # Add histograms for trainable variables.
-    # for var in tf.trainable_variables():
-    #     tf.histogram_summary(var.op.name, var)
+    for var in tf.trainable_variables():
+        tf.histogram_summary(var.op.name, var)
 
     # Add histograms for gradients.
-    # for grad, var in grads:
-    #     if grad is not None:
-    #         tf.histogram_summary(var.op.name + '/gradients', grad)
+    for grad, var in grads:
+        if grad is not None:
+            tf.histogram_summary(var.op.name + '/gradients', grad)
 
     # Track the moving averages of all trainable variables.
     variable_averages = tf.train.ExponentialMovingAverage(
@@ -266,7 +292,7 @@ def optimizer(total_loss, global_step):
     return train_op
 
 
-def train_epochs():
+def train():
     """Train CIFAR-10 for a number of steps."""
     with tf.Graph().as_default():
         global_step = tf.Variable(0, trainable=False)
@@ -283,10 +309,10 @@ def train_epochs():
 
         # Build a Graph that trains the model with one batch of examples and
         # updates the model parameters.
-        train_op = optimizer(loss, global_step)
+        train_op = train_setup(loss, global_step)
 
         # Create a saver.
-        # saver = tf.train.Saver(tf.all_variables())
+        saver = tf.train.Saver(tf.all_variables())
 
         # Build the summary operation based on the TF collection of Summaries.
         summary_op = tf.merge_all_summaries()
@@ -302,11 +328,36 @@ def train_epochs():
         # Start the queue runners.
         tf.train.start_queue_runners(sess=sess)
 
-        start_time = time.time()
-        for _ in xrange(FLAGS.max_iter):
-            _, loss_value = sess.run([train_op, loss])
+        summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, sess.graph)
 
-        duration = time.time() - start_time
+        for step in xrange(FLAGS.max_steps):
+            start_time = time.time()
+            _, loss_value = sess.run([train_op, loss])
+            duration = time.time() - start_time
+
+            assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+
+            if step % 10 == 0:
+                num_examples_per_step = FLAGS.batch_size
+                examples_per_sec = num_examples_per_step / duration
+                sec_per_batch = float(duration)
+
+                format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
+                              'sec/batch)')
+                print (format_str % (datetime.now(), step, loss_value,
+                                     examples_per_sec, sec_per_batch))
+
+            if step % 100 == 0:
+                summary_str = sess.run(summary_op)
+                summary_writer.add_summary(summary_str, step)
+
+            # Save the model checkpoint periodically.
+            if step % 1000 == 0 or (step + 1) == FLAGS.max_steps:
+                checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
+                saver.save(sess, checkpoint_path, global_step=step)
+
+
+# Model Eval
 
 def eval_once(saver, summary_writer, top_k_op, summary_op):
     """Run Eval once.
@@ -359,7 +410,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
 def evaluate():
     """Eval CIFAR-10 for a number of steps."""
     with tf.Graph().as_default() as g:
-        eval_data = FLAGS.eval_data == 'test'
+        # Get images and labels for CIFAR-10.
         images, labels = get_inputs(False)
 
         # Build a Graph that computes the logits predictions from the
@@ -370,8 +421,7 @@ def evaluate():
         top_k_op = tf.nn.in_top_k(logits, labels, 1)
 
         # Restore the moving average version of the learned variables for eval.
-        variable_averages = tf.train.ExponentialMovingAverage(
-                MOVING_AVERAGE_DECAY)
+        variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY)
         variables_to_restore = variable_averages.variables_to_restore()
         saver = tf.train.Saver(variables_to_restore)
 
@@ -391,7 +441,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     if tf.gfile.Exists(FLAGS.train_dir):
         tf.gfile.DeleteRecursively(FLAGS.train_dir)
     tf.gfile.MakeDirs(FLAGS.train_dir)
-    train_epochs()
+    train()
     evaluate()
 
 if __name__ == '__main__':
