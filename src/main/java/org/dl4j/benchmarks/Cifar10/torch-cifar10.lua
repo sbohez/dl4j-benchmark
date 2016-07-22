@@ -1,58 +1,105 @@
 --Torch Cifar10
---Reference: http://torch.ch/blog/2015/07/30/cifar.html
+--Reference:  http://torch.ch/blog/2015/07/30/cifar.html
+--https://github.com/szagoruyko/cifar.torch
 
-require 'torch'
-require 'nn'
+-- Code for Wide Residual Networks http://arxiv.org/abs/1605.07146
+-- (c) Sergey Zagoruyko, 2016
+require 'xlua'
 require 'optim'
-require 'paths'
+require 'image'
+require 'cunn'
+require 'cudnn'
+local c = require 'trepl.colorize'
+local json = require 'cjson'
+paths.dofile'augmentation.lua'
+
+-- for memory optimizations and graph generation
+local optnet = require 'optnet'
+local graphgen = require 'optnet.graphgen'
+local iterm = require 'iterm'
+require 'iterm.dot'
 
 torch.manualSeed(42)
 
 opt = {
-    gpu = true,
-    max_epoch = 15,
-    numExamples = 59904, -- after it throws errors in target and doesn't properly load
-    numTestExamples = 10000,
+    -- TODO get file and labeled
+    dataset = 'src/main/resources/torch-data/cifar10_whitened.t7',
+    save = 'logs',
     batchSize = 128,
-    noutputs = 10,
-    channels = 1,
-    height = 32,
-    width = 32,
-    --    ninputs = 32*32,
-
-    --    height = 28,
-    --    width = 28,
-    ninputs = 28*28,
-    nhidden = 1000,
-    coefL2 = 1e-4,
-    path_dataset = 'src/main/resources/torch-data'
+    learningRate = 0.1,
+    learningRateDecay = 0,
+    learningRateDecayRatio = 0.2,
+    weightDecay = 0.0005,
+    dampening = 0,
+    momentum = 0.9,
+    epoch_step = "80",
+    max_epoch = 300,
+    model = 'nin',
+    optimMethod = 'sgd',
+    init_value = 10,
+    depth = 50,
+    shortcutType = 'A',
+    nesterov = false,
+    dropout = 0,
+    hflip = true,
+    randomcrop = 4,
+    imageSize = 32,
+    randomcrop_type = 'zero',
+    cudnn_fastest = true,
+    cudnn_deterministic = false,
+    optnet_optimize = true,
+    generate_graph = false,
+    multiply_input_factor = 1,
+    widen_factor = 1,
+    nGPU = 1,
+--    gpu = true,
+--    channels = 1,
+--    height = 32,
+--    width = 32,
+--    ninputs = 32*32,
+--    coefL2 = 1e-4,
 
 }
 
+opt = xlua.envparams(opt)
 
-optimState = {
-    learningRate = 0.006,
-    weightDecay = 1e-4,
-    nesterov = true,
-    momentum =  0.9,
-    dampening = 0
-}
+opt.epoch_step = tonumber(opt.epoch_step) or loadstring('return '..opt.epoch_step)()
+print(opt)
 
-classes = {'1','2','3','4','5','6','7','8','9','10'}
-geometry = {opt.height,opt.width}
+------------------------------------------------------------
+-- support functions
+
+-- TODO flag for gpu
+function makeDataParallelTable(model, nGPU)
+    if nGPU > 1 then
+        local gpus = torch.range(1, nGPU):totable()
+        local fastest, benchmark = cudnn.fastest, cudnn.benchmark
+
+        local dpt = nn.DataParallelTable(1, true, true)
+        :add(model, gpus)
+        :threads(function()
+            local cudnn = require 'cudnn'
+            cudnn.fastest, cudnn.benchmark = fastest, benchmark
+        end)
+        dpt.gradInput = nil
+
+        model = dpt:cuda()
+    end
+    return model
+end
 
 ------------------------------------------------------------
 -- print('Load data')
 
+print(c.blue '==>' ..' loading data')
+local provider = torch.load(opt.dataset)
+opt.num_classes = provider.testData.labels:max()
 
-provider = Provider()
-provider:normalize()
-torch.save(paths.concat(opt.path_dataset, 'provider.t7'),provider)
 
 ------------------------------------------------------------
 -- print('Build model')
-function very_deep_model()
 
+function vgg()
     local vgg = nn.Sequential()
     -- building block
     local function ConvBNReLU(nInputPlane, nOutputPlane)
@@ -101,85 +148,140 @@ function very_deep_model()
         end
         init'nn.SpatialConvolution'
     end
+    for k,v in pairs(vgg:findModules'nn.Linear') do
+        v.bias:zero()
+    end
     MSRinit(vgg)
     return vgg
 end
 
+print(c.blue '==>' ..' configuring model')
+local model = nn.Sequential()
+local net = vgg():cuda() -- TODO setup gpu conditional
+do
+    function nn.Copy.updateGradInput() end
+    local function add(flag, module) if flag then model:add(module) end end
+    add(opt.hflip, nn.BatchFlip():float())
+    add(opt.randomcrop > 0, nn.RandomCrop(opt.randomcrop, opt.randomcrop_type):float())
+    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
+    add(opt.multiply_input_factor ~= 1, nn.MulConstant(opt.multiply_input_factor):cuda())
+
+    cudnn.convert(net, cudnn)
+    cudnn.benchmark = true
+    if opt.cudnn_fastest then
+        for i,v in ipairs(net:findModules'cudnn.SpatialConvolution') do v:fastest() end
+    end
+    if opt.cudnn_deterministic then
+        net:apply(function(m) if m.setMode then m:setMode(1,1,1) end end)
+    end
+
+    print(net)
+    print('Network has', #net:findModules'cudnn.SpatialConvolution', 'convolutions')
+
+    local sample_input = torch.randn(8,3,opt.imageSize,opt.imageSize):cuda()
+    if opt.generate_graph then
+        iterm.dot(graphgen(net, sample_input), opt.save..'/graph.pdf')
+    end
+    if opt.optnet_optimize then
+        optnet.optimizeMemory(net, sample_input, {inplace = false, mode = 'training'})
+    end
+
+    model:add(makeDataParallelTable(net, opt.nGPU))
+end
+
+local function log(t) print('json_stats: '..json.encode(tablex.merge(t,opt,true))) end
+
+print('Will save at '..opt.save)
+paths.mkdir(opt.save)
+
+local parameters,gradParameters = model:getParameters()
+
+opt.n_parameters = parameters:numel()
+print('Network has ', parameters:numel(), 'parameters')
+
+print(c.blue'==>' ..' setting criterion')
+local criterion = nn.CrossEntropyCriterion():cuda()
+
+-- a-la autograd
+local f = function(inputs, targets)
+    model:forward(inputs)
+    local loss = criterion:forward(model.output, targets)
+    local df_do = criterion:backward(model.output, targets)
+    model:backward(inputs, df_do)
+    return loss
+end
+
+print(c.blue'==>' ..' configuring optimizer')
+local optimState = tablex.deepcopy(opt)
+
+
 ------------------------------------------------------------
 -- print('Train model')
-function training()
-    local MAX_EPOCH = 20
-    local x = torch.load(string.format("%s/train_x.bin", DATA_DIR))
-    local y = torch.load(string.format("%s/train_y.bin", DATA_DIR))
+function train()
+    model:training()
 
-    local model = very_deep_model() --:cuda()
-    local criterion = nn.MSECriterion()--:cuda()
+    local targets = torch.CudaTensor(opt.batchSize)
+    local indices = torch.randperm(provider.trainData.data:size(1)):long():split(opt.batchSize)
+    -- remove last element so that all minibatches have equal size
+    indices[#indices] = nil
 
-    local sgd_config = {
-        learningRate = 1.0,
-        learningRateDecay = 5.0e-6,
-        momentum = 0.9,
-        xBatchSize = 64
-    }
-    local params = nil
+    local loss = 0
 
-    print("data augmentation ..")
-    x, y = data_augmentation(x, y)
-    collectgarbage()
+    for t,v in ipairs(indices) do
+        local inputs = provider.trainData.data:index(1,v)
+        targets:copy(provider.trainData.labels:index(1,v))
 
-    print("preprocessing ..")
-    params = preprocessing(x)
-    torch.save("models/preprocessing_params.bin", params)
-    collectgarbage()
-
-    for epoch = 1, MAX_EPOCH do
-        print("# " .. epoch)
-        if epoch == MAX_EPOCH then
-            -- final epoch
-            sgd_config.learningRateDecay = 0
-            sgd_config.learningRate = 0.01
-        end
-        model:training()
-        print(minibatch_sgd(model, criterion, x, y,
-            CLASSES, sgd_config))
-        model:evaluate()
-        torch.save(string.format("models/very_deep_%d.model", epoch), model)
-        epoch = epoch + 1
-
-        collectgarbage()
+        optim[opt.optimMethod](function(x)
+            if x ~= parameters then parameters:copy(x) end
+            model:zeroGradParameters()
+            loss = loss + f(inputs, targets)
+            return f,gradParameters
+        end, parameters, optimState)
     end
-    return model
+
+    return loss / #indices
 end
 ------------------------------------------------------------
 -- print('Evaluate')
 
-local function test(model, params, test_x, test_y, classes)
-    local confusion = optim.ConfusionMatrix(classes)
-    for i = 1, test_x:size(1) do
-        local preds = torch.Tensor(10):zero()
-        local x = data_augmentation(test_x[i])
-        local step = 64
-        preprocessing(x, params)
-        for j = 1, x:size(1), step do
-            local batch = torch.Tensor(step, x:size(2), x:size(3), x:size(4)):zero()
-            local n = step
-            if j + n > x:size(1) then
-                n = 1 + n - ((j + n) - x:size(1))
-            end
-            batch:narrow(1, 1, n):copy(x:narrow(1, j, n))
-            local z = model:forward(batch:cuda()):float()
-            -- averaging
-            for k = 1, n do
-                preds = preds + z[k]
-            end
-        end
-        preds:div(x:size(1))
-        confusion:add(preds, test_y[i])
-        xlua.progress(i, test_x:size(1))
+function test()
+    model:evaluate()
+    local confusion = optim.ConfusionMatrix(opt.num_classes)
+    local data_split = provider.testData.data:split(opt.batchSize,1)
+    local labels_split = provider.testData.labels:split(opt.batchSize,1)
+
+    for i,v in ipairs(data_split) do
+        confusion:batchAdd(model:forward(v), labels_split[i])
     end
-    xlua.progress(test_x:size(1), test_x:size(1))
-    return confusion
+
+    confusion:updateValids()
+    return confusion.totalValid * 100
 end
 
-training()
-test()
+------------------------------------------------------------
+
+for epoch=1,opt.max_epoch do
+    print('==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+    -- drop learning rate and reset momentum vector
+    if torch.type(opt.epoch_step) == 'number' and epoch % opt.epoch_step == 0 or
+            torch.type(opt.epoch_step) == 'table' and tablex.find(opt.epoch_step, epoch) then
+        opt.learningRate = opt.learningRate * opt.learningRateDecayRatio
+        optimState = tablex.deepcopy(opt)
+    end
+
+    local function t(f) local s = torch.Timer(); return f(), s:time().real end
+
+    local loss, train_time = t(train)
+    local test_acc, test_time = t(test)
+
+    log{
+        loss = loss,
+        epoch = epoch,
+        test_acc = test_acc,
+        lr = opt.learningRate,
+        train_time = train_time,
+        test_time = test_time,
+    }
+end
+
+torch.save(opt.save..'/model.t7', net:clearState())

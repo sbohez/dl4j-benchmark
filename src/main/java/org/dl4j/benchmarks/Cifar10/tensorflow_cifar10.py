@@ -2,6 +2,8 @@
 """
 Tensorflow CIFAR-10
 Reference: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/models/image/cifar10
+
+Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 """
 
 import tensorflow as tf
@@ -14,7 +16,7 @@ from six.moves import urllib, xrange
 import numpy as np
 from datetime import datetime
 import math
-from tensorflow.models.image.cifar10 import cifar10_input
+import cifar10_input
 
 # TODO add gpu & connect train with eval
 
@@ -38,14 +40,16 @@ TOWER_NAME = 'tensor_flow_cifar_tower'
 
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
+# TODO add GPU flag like lenet
+
 FLAGS = tf.app.flags.FLAGS
 # Basic model parameters.
 tf.app.flags.DEFINE_integer('batch_size', 128, """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_string('data_dir', BASE_DIR + '/cifar-10-batches-bin', """Path to the CIFAR-10 data directory.""")
 tf.app.flags.DEFINE_boolean('use_fp16', False, """Train the model using fp16.""")
-tf.app.flags.DEFINE_string('train_dir', '/cifar10_train', """Path to store training data.""")
+tf.app.flags.DEFINE_string('train_dir', BASE_DIR + '/cifar10_train', """Path to store training data.""")
 # max_iteration = (epochs * numExamples)/batchSize ( * 50000)/128
-tf.app.flags.DEFINE_integer('max_iter', 1000000, """Number of epochs.""")
+tf.app.flags.DEFINE_integer('max_iter', 1000000, """Number of epochs.""") # max_steps
 tf.app.flags.DEFINE_boolean('log_device_placement', False,"""Whether to log device placement.""")
 tf.app.flags.DEFINE_string('eval_dir', BASE_DIR + '/cifar10_eval',"""Directory where to write event logs.""")
 tf.app.flags.DEFINE_string('checkpoint_dir', BASE_DIR + '/cifar10_train', """Directory where to read model checkpoints.""")
@@ -55,6 +59,18 @@ tf.app.flags.DEFINE_boolean('run_once', False,"""Whether to run eval only once."
 # tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
 
+# FLAGS = tf.app.flags.FLAGS
+# FLAGS.batch_size = 128
+# FLAGS.data_dir = BASE_DIR + '/cifar-10-batches-bin'
+# FLAGS.use_fp16 = False
+# FLAGS.train_dir = BASE_DIR + '/cifar10_train'
+# FLAGS.max_steps = 10
+# FLAGS.log_device_placement = True
+# FLAGS.eval_dir = BASE_DIR + '/cifar10_eval'
+# FLAGS.checkpoint_dir = BASE_DIR + '/cifar10_train'
+# FLAGS.eval_internal_secs = 60
+# FLAGS.num_examples = 10000
+# FLAGS.run_once = True
 
 # Summary
 
@@ -98,8 +114,12 @@ def download_and_extract():
 def get_inputs(train):
     """Construct distorted input for CIFAR using the Reader ops.
     """
-    images, labels = cifar10_input.distorted_inputs(data_dir=FLAGS.data_dir, batch_size=FLAGS.batch_size) \
-        if train else cifar10_input.inputs(eval_data=train, data_dir=FLAGS.data_dir, batch_size=FLAGS.batch_size)
+    if train:
+        images, labels = cifar10_input.distorted_inputs(data_dir=FLAGS.data_dir, batch_size=FLAGS.batch_size)
+    else:
+        images, labels = cifar10_input.inputs(eval_data=train, data_dir=FLAGS.data_dir, batch_size=FLAGS.batch_size)
+
+    print(images)
     if FLAGS.use_fp16:
         images = tf.cast(images, tf.float16)
         labels = tf.cast(labels, tf.float16)
@@ -321,8 +341,9 @@ def train():
         init = tf.initialize_all_variables()
 
         # Start running operations on the Graph.
-        sess = tf.Session(config=tf.ConfigProto(
-                log_device_placement=FLAGS.log_device_placement))
+        config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement)
+        config.gpu_options.per_process_gpu_memory_fraction=0
+        sess = tf.Session(config=config)
         sess.run(init)
 
         # Start the queue runners.
@@ -330,31 +351,31 @@ def train():
 
         summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, sess.graph)
 
-        for step in xrange(FLAGS.max_steps):
+        for iter in xrange(FLAGS.max_iter):
             start_time = time.time()
             _, loss_value = sess.run([train_op, loss])
             duration = time.time() - start_time
 
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-            if step % 10 == 0:
+            if iter % 10 == 0:
                 num_examples_per_step = FLAGS.batch_size
                 examples_per_sec = num_examples_per_step / duration
                 sec_per_batch = float(duration)
 
                 format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                               'sec/batch)')
-                print (format_str % (datetime.now(), step, loss_value,
+                print (format_str % (datetime.now(), iter, loss_value,
                                      examples_per_sec, sec_per_batch))
 
-            if step % 100 == 0:
+            if iter % 100 == 0:
                 summary_str = sess.run(summary_op)
-                summary_writer.add_summary(summary_str, step)
+                summary_writer.add_summary(summary_str, iter)
 
             # Save the model checkpoint periodically.
-            if step % 1000 == 0 or (step + 1) == FLAGS.max_steps:
+            if iter % 1000 == 0 or (iter + 1) == FLAGS.max_steps:
                 checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
-                saver.save(sess, checkpoint_path, global_step=step)
+                saver.save(sess, checkpoint_path, global_step=iter)
 
 
 # Model Eval

@@ -216,6 +216,7 @@ def main():
     do_eval(sess, logits, images_placeholder, labels_placeholder, data_sets.test)
     duration = time.time() - start_time
     print('Total train time: %s' % duration)
+    sess.close
 
 
 if __name__ == "__main__":
