@@ -86,7 +86,7 @@ public class Dl4j_MLPMnistSingleLayer{
 
 //            log.info("Evaluate model....");
             Evaluation eval = network.evaluate(mnistTest);
-            log.info("MLN eval: " + eval.stats());
+            log.info(eval.stats());
 
 
             log.info("****************Example finished********************");

@@ -1,49 +1,50 @@
 --
 --
--- Note documentation harder to explore esp for newbies
+-- Reference: https://github.com/torch/demos/blob/master/train-a-digit-classifier/train-on-mnist.lua
 --
 
 require 'torch'
 require 'nn'
 require 'optim'
-require 'mnist'
+require 'src/main/resources/torch-data/dataset-mnist'
 
+torch.manualSeed(42)
 torch.setdefaulttensortype('torch.FloatTensor')
 
 -- epoch tracker
 opt = {
     gpu = true,
     max_epoch = 11,
-    numExamples = 60000 , -- numExamples
+    numExamples = 59904 , -- numExamples
     numTestExamples = 10000,
     batchSize = 66,
     testBatchSize = 100,
     noutputs = 10,
     channels = 1,
-    height = 28,
-    width = 28,
-    ninputs = 784,
+    height = 32,
+    width = 32,
+    ninputs = 32*32,
     coefL2 = 5e-4
 }
 
 optimState = {
     learningRate = 1e-2,
     weightDecay = opt.coefL2,
-    momentum =  0.9
-
+    nesterov = true,
+    momentum =  0.9,
+    dampening = 0
 }
 
 classes = {'1','2','3','4','5','6','7','8','9','10'}
+geometry = {opt.height,opt.width }
 
 ------------------------------------------------------------
 -- print('Load data')
--- create training set and normalize
 trainData = mnist.loadTrainSet(opt.numExamples, geometry)
 mean = trainData.data:mean()
 std =  trainData.data:std()
 trainData:normalizeGlobal(mean, std)
 
--- create test set and normalize
 testData = mnist.loadTestSet(opt.numTestExamples, geometry)
 mean = testData.data:mean()
 std =  testData.data:std()
@@ -81,9 +82,7 @@ criterion = nn.ClassNLLCriterion()
 ------------------------------------------------------------
 -- print('Train model')
 function train(dataset)
-    -- epoch tracker
-    epoch = epoch or 1
-    -- set model to training mode (for modules that differ in training and testing, like Dropout)
+
     model_new:training()
 
 --    loops from 1 to full dataset size by batchsize
@@ -135,11 +134,9 @@ function train(dataset)
             return f, gradParameters
         end
 
-        optim.nesterov(feval, parameters, optimState)
+        optim.sgd(feval,parameters,optimState)
     end
 
-    -- next epoch
-    epoch = epoch + 1
 end
 
 ------------------------------------------------------------
@@ -180,15 +177,13 @@ function test(dataset)
 
     -- print confusion matrix
     print(confusion)
-    testLogger:add{['% mean class accuracy (test set)'] = confusion.totalValid * 100}
+    print('Accuracy: ', confusion.totalValid * 100)
     confusion:zero()
 end
 
-
+time = sys.clock()
 for _ = 1,opt.max_epoch do
-    local time = sys.clock()
     train(trainData)
-    test(testData)
-    time = sys.clock() - time
-    print("Total time: " .. sys.clock() - time)
 end
+test(testData)
+print("Total time: ", (sys.clock() - time))
