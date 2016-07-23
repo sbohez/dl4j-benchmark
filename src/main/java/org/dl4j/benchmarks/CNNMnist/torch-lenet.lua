@@ -9,6 +9,7 @@ require 'optim'
 require 'src/main/resources/torch-data/dataset-mnist'
 --mnist = require 'mnist' -- alternative but was giving bad results
 
+total_time = sys.clock()
 torch.manualSeed(42)
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -41,6 +42,7 @@ geometry = {opt.height,opt.width }
 
 ------------------------------------------------------------
 -- print('Load data')
+data_load_time = sys.clock()
 trainData = mnist.loadTrainSet(opt.numExamples, geometry)
 mean = trainData.data:mean()
 std =  trainData.data:std()
@@ -50,7 +52,7 @@ testData = mnist.loadTestSet(opt.numTestExamples, geometry)
 mean = testData.data:mean()
 std =  testData.data:std()
 testData:normalizeGlobal(mean, std):resize(opt.channels, opt.height, opt.width)
-
+data_load_time = sys.clock() - data_load_time
 --trainData = mnist.traindataset()
 --testData = mnist.testdataset()
 
@@ -236,9 +238,19 @@ function test(dataset)
     confusion:zero()
 end
 
-time = sys.clock()
+train_time = sys.clock()
 for _ = 1,opt.max_epoch do
     train(trainData)
 end
+train_time = sys.clock() - train_time
+
+test_time = sys.clock()
 test(testData)
-print("Total time: ", (sys.clock() - time))
+test_time = sys.clock() - test_time
+total_time = sys.clock() - total_time
+
+print("****************Example finished********************")
+print('Data load time: %s' % (data_load_time))
+print('Train time: %s' % train_time)
+print('Test time: %s' % test_time)
+print('Total time: %s' % total_time)

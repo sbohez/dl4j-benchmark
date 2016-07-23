@@ -25,7 +25,7 @@ public class Dl4j_MLPMnistSingleLayer{
         private static Logger log = LoggerFactory.getLogger(Dl4j_MLPMnistSingleLayer.class);
 
         public static void main(String[] args) throws Exception {
-
+            long totalTime = System.currentTimeMillis();
 //            CudaEnvironment.getInstance().getConfiguration()
 //                    .setFirstMemory(AllocationStatus.DEVICE)
 //                    .setExecutionModel(Configuration.ExecutionModel.SEQUENTIAL)
@@ -45,12 +45,11 @@ public class Dl4j_MLPMnistSingleLayer{
             double momentum = 0.9;
             double l2 = 1e-4;
 
-            long duration = System.currentTimeMillis();
-
             //Get the DataSetIterators:
+            long dataLoadTime = System.currentTimeMillis();
             DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, true, rngSeed);
             DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, rngSeed);
-
+            dataLoadTime = dataLoadTime - System.currentTimeMillis();
 
 //            log.info("Build model....");
             MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
@@ -79,18 +78,25 @@ public class Dl4j_MLPMnistSingleLayer{
             network.init();
 
 //            log.info("Train model....");
+            long trainTime = System.currentTimeMillis();
             for(int i=0; i < epochs; i++) {
                 network.fit(mnistTrain);
                 if (i != epochs-1) mnistTrain.reset();
             }
+            trainTime = trainTime - System.currentTimeMillis();
 
 //            log.info("Evaluate model....");
+            long testTime = System.currentTimeMillis();
             Evaluation eval = network.evaluate(mnistTest);
             log.info(eval.stats());
+            testTime = testTime - System.currentTimeMillis();
 
-
+            totalTime = totalTime - System.currentTimeMillis();
             log.info("****************Example finished********************");
-            log.info("Total time: {}", (System.currentTimeMillis() - duration));
+            log.info("Data load time: {}", dataLoadTime);
+            log.info("Train time: {}", trainTime);
+            log.info("Test time: {}", testTime);
+            log.info("Total time: {}", totalTime);
 
 
         }

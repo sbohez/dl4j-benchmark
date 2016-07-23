@@ -80,11 +80,13 @@ def _evaluation(logits, labels):
 
 
 def run():
-    start_time = time.time()
-    # Hyper-parameters
+    total_time = time.time()
 
+    data_load_time = time.time()
     # Import data
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
+    data_load_time = time.time() - data_load_time
+
     x = tf.placeholder(DTYPE, [None, 784])
     y_ = tf.placeholder(DTYPE, [None, 10])
 
@@ -101,11 +103,14 @@ def run():
     sess = tf.InteractiveSession(config=config)
     sess.run(tf.initialize_all_variables())
 
+    train_time = time.time()
     for _ in xrange(FLAGS.max_iter):
         batch_xs, batch_ys = mnist.train.next_batch(FLAGS.batch_size)
         train_step.run({x: batch_xs, y_: batch_ys})
+    train_time = time.time() - train_time
 
     # Test trained model
+    test_time = time.time()
     correct_count = 0
     num_examples = mnist.test.num_examples
     # Define evaluation
@@ -113,8 +118,14 @@ def run():
         batch_xs, batch_ys = mnist.test.next_batch(FLAGS.batch_size)
         correct_count += sess.run(_evaluation(y, y_), {x: batch_xs, y_: batch_ys})
     print("Accuracy: ", (correct_count / num_examples)) #(accuracy/FLAGS.test_iter))
-    duration = time.time() - start_time
-    print('Total train time: %s' % (duration * 1000))
+    test_time = time.time() - test_time
+
+    total_time = time.time() - total_time
+    print("****************Example finished********************")
+    print('Data load time: %s' % data_load_time*1000)
+    print('Train time: %s' % train_time*1000)
+    print('Test time: %s' % test_time*1000)
+    print('Total time: %s' % total_time*1000)
     sess.close
 
 if __name__ == "__main__":

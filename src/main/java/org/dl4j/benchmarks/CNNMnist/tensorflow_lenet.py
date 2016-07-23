@@ -169,11 +169,12 @@ def run_training(train_data):
         sess.run(tf.initialize_all_variables())
 
         # Start the training loop.
+        train_time = time.time()
         for _ in xrange(FLAGS.max_iter):
             feed_dict = _fill_feed_dict(train_data, images_placeholder, labels_placeholder)
             _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
-
-        return sess, logits, images_placeholder, labels_placeholder
+        train_time = time.time() - train_time
+        return sess, logits, images_placeholder, labels_placeholder, train_time
 
 
 def _evaluation_straight(logits, labels):
@@ -209,15 +210,27 @@ def do_eval(sess, logits, images_placeholder, labels_placeholder, data_set):
 #                          session=sess))
 
 
-def main():
-    start_time = time.time()
+def run():
+    total_time = time.time()
+
+    data_load_time = time.time()
     data_sets = load_data()
-    sess, logits, images_placeholder, labels_placeholder = run_training(data_sets.train)
+    data_load_time = time.time() - data_load_time
+
+    sess, logits, images_placeholder, labels_placeholder, train_time = run_training(data_sets.train)
+
+    test_time = time.time()
     do_eval(sess, logits, images_placeholder, labels_placeholder, data_sets.test)
-    duration = time.time() - start_time
-    print('Total train time: %s' % duration)
+    test_time = time.time() - test_time
+
+    total_time = time.time() - total_time
+    print("****************Example finished********************")
+    print('Data load time: %s' % data_load_time*1000)
+    print('Train time: %s' % train_time*1000)
+    print('Test time: %s' % test_time*1000)
+    print('Total time: %s' % total_time*1000)
     sess.close
 
 
 if __name__ == "__main__":
-    main()
+    run()

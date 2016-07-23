@@ -27,23 +27,33 @@ public class Dl4j_LenetMnist {
     public final static int nCores = 32;
 
     public static void main(String[] args) throws Exception {
-        long duration = System.currentTimeMillis();
+        long totalTime = System.currentTimeMillis();
+        long dataLoadTime = System.currentTimeMillis();
         DataSetIterator mnistTrain = new MnistDataSetIterator(trainBatchSize,true,12345);
         DataSetIterator mnistTest = new MnistDataSetIterator(testBatchSize,false,12345);
+        dataLoadTime = dataLoadTime - System.currentTimeMillis();
 
         MultiLayerNetwork network = new LeNet(height, width, channels, numLabels, seed, iterations).init();
         network.init();
 
+        long trainTime = System.currentTimeMillis();
         for(int i=0; i < epochs; i++) {
             network.fit(mnistTrain);
             if (i != epochs-1) mnistTrain.reset();
         }
+        trainTime = trainTime - System.currentTimeMillis();
 
+        long testTime = System.currentTimeMillis();
         Evaluation eval = network.evaluate(mnistTest);
         log.info(eval.stats());
+        testTime = testTime - System.currentTimeMillis();
 
+        totalTime = totalTime - System.currentTimeMillis();
         log.info("****************Example finished********************");
-        log.info("Total time: {}", (System.currentTimeMillis() - duration));
+        log.info("Data load time: {}", dataLoadTime);
+        log.info("Train time: {}", trainTime);
+        log.info("Test time: {}", testTime);
+        log.info("Total time: {}", totalTime);
 
     }
 }

@@ -318,7 +318,9 @@ def train():
         global_step = tf.Variable(0, trainable=False)
 
         # Get images and labels for CIFAR-10.
+        data_load_time = time.time()
         images, labels = get_inputs(True)
+        data_load_time = time.time() - data_load_time
 
         # Build a Graph that computes the logits predictions from the
         # inference model.
@@ -351,6 +353,7 @@ def train():
 
         summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, sess.graph)
 
+        train_time = time.time()
         for iter in xrange(FLAGS.max_iter):
             start_time = time.time()
             _, loss_value = sess.run([train_op, loss])
@@ -376,6 +379,7 @@ def train():
             if iter % 1000 == 0 or (iter + 1) == FLAGS.max_iter:
                 checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=iter)
+        return time.time() - train_time, data_load_time
 
 
 # Model Eval
@@ -432,7 +436,9 @@ def evaluate():
     """Eval CIFAR-10 for a number of steps."""
     with tf.Graph().as_default() as g:
         # Get images and labels for CIFAR-10.
+        data_load_time = time.time()
         images, labels = get_inputs(False)
+        data_load_time = time.time() - data_load_time
 
         # Build a Graph that computes the logits predictions from the
         # inference model.
@@ -451,19 +457,29 @@ def evaluate():
 
         summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir, g)
 
+        test_time = time.time()
         while True:
             eval_once(saver, summary_writer, top_k_op, summary_op)
             if FLAGS.run_once:
                 break
             time.sleep(FLAGS.eval_interval_secs)
+        return time.time() - test_time, data_load_time
 
-def main(argv=None):  # pylint: disable=unused-argument
+def run(argv=None):  # pylint: disable=unused-argument
+    total_time = time.time()
     download_and_extract()
     if tf.gfile.Exists(FLAGS.train_dir):
         tf.gfile.DeleteRecursively(FLAGS.train_dir)
     tf.gfile.MakeDirs(FLAGS.train_dir)
-    train()
-    evaluate()
+    train_time, data_load_time = train()
+    test_time, data_load_time2 = evaluate()
+
+    print("****************Example finished********************")
+    print('Data load time: %s' % (data_load_time+data_load_time2)*1000)
+    print('Train time: %s' % train_time*1000)
+    print('Test time: %s' % test_time*1000)
+    print('Total time: %s' % total_time*1000)
+
 
 if __name__ == '__main__':
-    main()
+    run()

@@ -562,7 +562,6 @@ public class CifarModels {
                 .layer(44, new DenseLayer.Builder()
                         .name("ffn1")
                         .nOut(512)
-                        .activation("identity")
                         .dropOut(0.5)
                         .build())
                 .layer(45, new BatchNormalization.Builder().eps(1e-3).build())

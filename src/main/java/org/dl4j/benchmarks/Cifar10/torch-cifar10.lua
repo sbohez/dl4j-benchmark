@@ -18,6 +18,7 @@ local graphgen = require 'optnet.graphgen'
 local iterm = require 'iterm'
 require 'iterm.dot'
 
+total_time = sys.clock()
 torch.manualSeed(42)
 
 opt = {
@@ -142,11 +143,11 @@ end
 
 ------------------------------------------------------------
 -- print('Load data')
-
+data_load_time = sys.clock()
 print(c.blue '==>' ..' loading data')
 local provider = torch.load(opt.dataset)
 opt.num_classes = provider.testData.labels:max()
-
+data_load_time = sys.clock() - data_load_time
 
 ------------------------------------------------------------
 -- print('Build model')
@@ -309,7 +310,6 @@ function test()
 end
 
 ------------------------------------------------------------
-
 for epoch=1,opt.max_epoch do
     print('==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
     -- drop learning rate and reset momentum vector
@@ -335,3 +335,10 @@ for epoch=1,opt.max_epoch do
 end
 
 torch.save(opt.save..'/model.t7', net:clearState())
+total_time = sys.clock() - total_time
+
+print("****************Example finished********************")
+print('Data load time: %s' % (data_load_time))
+print('Train time: %s' % train_time)
+print('Test time: %s' % test_time)
+print('Total time: %s' % total_time)

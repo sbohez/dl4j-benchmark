@@ -65,6 +65,7 @@ public class Dl4j_Cifar10 {
     public static CifarModeEnum networkType = CifarModeEnum.TORCH_NIN;
 
     public static void main(String[] args) throws IOException {
+        long totalTime = System.currentTimeMillis();
         MultiLayerNetwork network;
         int normalizeValue = 255;
 
@@ -201,21 +202,27 @@ public class Dl4j_Cifar10 {
         network.setListeners(Arrays.asList((IterationListener) new ScoreIterationListener(listenerFreq)));
 
         System.out.println("Train model...");
+        long dataLoadTime = System.currentTimeMillis();
         MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, normalizeValue, true));
+        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false));
+        dataLoadTime = dataLoadTime - System.currentTimeMillis();
 
-        long timeX = System.currentTimeMillis();
+        long trainTime = System.currentTimeMillis();
         network.fit(cifar);
-        long timeY = System.currentTimeMillis();
+        trainTime = trainTime - System.currentTimeMillis();
 
         log.info("Evaluate model....");
-        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false));
+        long testTime = System.currentTimeMillis();
         Evaluation eval = network.evaluate(cifarTest);
         System.out.println(eval.stats(true));
+        testTime = testTime - System.currentTimeMillis();
+        totalTime = totalTime - System.currentTimeMillis();
 
         log.info("****************Example finished********************");
-        log.info("Total train time: {}", (timeY - timeX));
-
-        new StandardScaler();
+        log.info("Data load time: {}", dataLoadTime);
+        log.info("Train time: {}", trainTime);
+        log.info("Test time: {}", testTime);
+        log.info("Total time: {}", totalTime);
 
     }
 
