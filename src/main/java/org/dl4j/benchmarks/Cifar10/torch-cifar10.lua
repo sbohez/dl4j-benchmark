@@ -11,7 +11,6 @@ require 'cunn'
 require 'cudnn'
 local c = require 'trepl.colorize'
 local json = require 'cjson'
-paths.dofile'augmentation.lua'
 
 -- for memory optimizations and graph generation
 local optnet = require 'optnet'
@@ -51,7 +50,7 @@ opt = {
     generate_graph = false,
     multiply_input_factor = 1,
     widen_factor = 1,
-    nGPU = 1,
+    nGPU = 0,
 --    gpu = true,
 --    channels = 1,
 --    height = 32,
@@ -69,7 +68,6 @@ print(opt)
 ------------------------------------------------------------
 -- support functions
 
--- TODO flag for gpu
 function makeDataParallelTable(model, nGPU)
     if nGPU > 1 then
         local gpus = torch.range(1, nGPU):totable()
@@ -86,6 +84,60 @@ function makeDataParallelTable(model, nGPU)
         model = dpt:cuda()
     end
     return model
+end
+
+do -- random crop
+local RandomCrop, parent = torch.class('nn.RandomCrop', 'nn.Module')
+
+function RandomCrop:__init(pad, mode)
+    assert(pad)
+    parent.__init(self)
+    self.pad = pad
+    if mode == 'reflection' then
+        self.module = nn.SpatialReflectionPadding(pad,pad,pad,pad)
+    elseif mode == 'zero' then
+        self.module = nn.SpatialZeroPadding(pad,pad,pad,pad)
+    else
+        error'unknown mode'
+    end
+    self.train = true
+end
+
+function RandomCrop:updateOutput(input)
+    assert(input:dim() == 4)
+    local imsize = input:size(4)
+    if self.train then
+        local padded = self.module:forward(input)
+        local x = torch.random(1,self.pad*2 + 1)
+        local y = torch.random(1,self.pad*2 + 1)
+        self.output = padded:narrow(4,x,imsize):narrow(3,y,imsize)
+    else
+        self.output:set(input)
+    end
+    return self.output
+end
+
+function RandomCrop:type(type)
+    self.module:type(type)
+    return parent.type(self, type)
+end
+end
+
+do -- random horizontal flip
+local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module')
+
+function BatchFlip:updateOutput(input)
+    self.train = self.train == nil and true or self.train
+    if self.train then
+        local bs = input:size(1)
+        local flip_mask = torch.randperm(bs):le(bs/2)
+        for i=1,input:size(1) do
+            if flip_mask[i] == 1 then image.hflip(input[i], input[i]) end
+        end
+    end
+    self.output:resize(input:size()):copy(input)
+    return self.output
+end
 end
 
 ------------------------------------------------------------
@@ -138,31 +190,29 @@ function vgg()
     vgg:add(nn.Linear(512,10))
 
     -- initialization from MSR
-    local function MSRinit(net)
-        local function init(name)
-            for k,v in pairs(net:findModules(name)) do
-                local n = v.kW*v.kH*v.nOutputPlane
-                v.weight:normal(0,math.sqrt(2/n))
-                v.bias:zero()
-            end
-        end
-        init'nn.SpatialConvolution'
+    for k,v in pairs(model:findModules('nn.SpatialConvolution')) do
+        local n = v.kW*v.kH*v.nOutputPlane
+        v.weight:normal(0,math.sqrt(2/n))
+        if v.bias then v.bias:zero() end
     end
     for k,v in pairs(vgg:findModules'nn.Linear') do
         v.bias:zero()
     end
-    MSRinit(vgg)
+    for i,v in ipairs(model:findModules'nn.SpatialConvolution') do
+        v.bias = nil
+        v.gradBias = nil
+    end
     return vgg
 end
 
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
-local net = vgg():cuda() -- TODO setup gpu conditional
+local net = vgg():cuda()
 do
     function nn.Copy.updateGradInput() end
     local function add(flag, module) if flag then model:add(module) end end
-    add(opt.hflip, nn.BatchFlip():float())
-    add(opt.randomcrop > 0, nn.RandomCrop(opt.randomcrop, opt.randomcrop_type):float())
+    add(opt.hflip, BatchFlip():float())
+    add(opt.randomcrop > 0, RandomCrop(opt.randomcrop, opt.randomcrop_type):float())
     model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
     add(opt.multiply_input_factor ~= 1, nn.MulConstant(opt.multiply_input_factor):cuda())
 

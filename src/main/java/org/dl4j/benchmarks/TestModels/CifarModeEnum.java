@@ -7,5 +7,5 @@ package org.dl4j.benchmarks.TestModels;
  * Also defines whether its train, cross validation or test phase
  */
 public enum CifarModeEnum {
-    BATCH_NORM, FULL_SIGMOID, QUICK;
+    CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG;
 }

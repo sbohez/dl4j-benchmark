@@ -11,7 +11,7 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.dl4j.benchmarks.TestModels.CifarCaffeModels;
+import org.dl4j.benchmarks.TestModels.CifarModels;
 import org.dl4j.benchmarks.TestModels.CifarModeEnum;
 import org.nd4j.linalg.dataset.api.iterator.StandardScaler;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
@@ -37,7 +37,7 @@ public class Dl4j_Cifar10 {
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = CifarLoader.NUM_TRAIN_IMAGES;
+    protected static int numTrainExamples = 1000;//CifarLoader.NUM_TRAIN_IMAGES;
     protected static int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
     protected static int trainBatchSize;
@@ -62,7 +62,7 @@ public class Dl4j_Cifar10 {
     protected static double l2;
     protected static double momentum;
 
-    public static CifarModeEnum networkType = CifarModeEnum.BATCH_NORM;
+    public static CifarModeEnum networkType = CifarModeEnum.TORCH_NIN;
 
     public static void main(String[] args) throws IOException {
         MultiLayerNetwork network;
@@ -72,7 +72,7 @@ public class Dl4j_Cifar10 {
 
         log.info("Build model....");
         switch (networkType) {
-            case QUICK:
+            case CAFFE_QUICK:
                 epochs = 1;
                 trainBatchSize = 100;
                 testBatchSize = 100;
@@ -89,7 +89,7 @@ public class Dl4j_Cifar10 {
                 l2 = 4e-3;
                 momentum = 0.9;
                 break;
-            case FULL_SIGMOID:
+            case CAFFE_FULL_SIGMOID:
                 trainBatchSize = 100;
                 testBatchSize = 100;
                 epochs = 130;
@@ -106,7 +106,7 @@ public class Dl4j_Cifar10 {
                 l2 = 4e-3;
                 momentum = 0.9;
                 break;
-            case BATCH_NORM:
+            case CAFFE_BATCH_NORM:
                 trainBatchSize = 100;
                 testBatchSize = 1000;
                 epochs = 120;
@@ -117,16 +117,67 @@ public class Dl4j_Cifar10 {
                 optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
                 updater = Updater.NESTEROVS;
                 lossFunctions = LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD;
-                learningRate = 12-3;
+                learningRate = 1e-3;
                 biasLearningRate = Double.NaN;
                 regularization = false;
                 l2 = 0.0;
                 momentum = 0.9;
                 break;
+            case TENSORFLOW_INFERENCE:
+                trainBatchSize = 128;
+                testBatchSize = 128;
+                epochs = 2560;
+                nIn = null;
+                nOut = new int[]{64, 64, 384, 192};
+                activation = "relu";
+                weightInit = WeightInit.DISTRIBUTION;
+                optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
+                updater = Updater.SGD;
+                lossFunctions = LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD;
+                learningRate = 1e-1;
+                biasLearningRate = Double.NaN;
+                regularization = true;
+                l2 = 0.004;
+                momentum = 0.9;
+                break;
+            case TORCH_NIN:
+                trainBatchSize = 128;
+                testBatchSize = 128;
+                epochs = 2; // 300;
+                nIn = null;
+                nOut = null;
+                activation = "relu";
+                weightInit = WeightInit.DISTRIBUTION;
+                optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
+                updater = Updater.SGD;
+                lossFunctions = LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD;
+                learningRate = 1e-1;
+                biasLearningRate = Double.NaN;
+                regularization = true;
+                l2 = 5e-4;
+                momentum = 0.9;
+                break;
+            case TORCH_VGG:
+                trainBatchSize = 128;
+                testBatchSize = 128;
+                epochs = 300;
+                nIn = null;
+                nOut = null;
+                activation = "relu";
+                weightInit = WeightInit.RELU;
+                optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
+                updater = Updater.SGD;
+                lossFunctions = LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD;
+                learningRate = 1e-1;
+                biasLearningRate = Double.NaN;
+                regularization = true;
+                l2 = 5e-4;
+                momentum = 0.9;
+                break;
             default:
                 throw new InvalidInputTypeException("Incorrect model provided.");
         }
-        network = new CifarCaffeModels(
+        network = new CifarModels(
                 HEIGHT,
                 WIDTH,
                 CHANNELS,
