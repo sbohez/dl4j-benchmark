@@ -329,7 +329,7 @@ public class CifarModels {
 
     }
 
-    public MultiLayerConfiguration torchNin(){
+    public MultiLayerConfiguration torchInitNin(){
         MultiLayerConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
                 .seed(seed)
                 .activation(activation)
@@ -431,7 +431,7 @@ public class CifarModels {
 
     }
 
-    public MultiLayerConfiguration torchVGG() {
+    public MultiLayerConfiguration torchInitVGG() {
         MultiLayerConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
                 .seed(seed)
                 .activation(activation)
@@ -601,10 +601,10 @@ public class CifarModels {
                 conf = tensorflowInference();
                 break;
             case TORCH_NIN:
-                conf = torchNin();
+                conf = torchInitNin();
                 break;
             case TORCH_VGG:
-                conf = torchVGG();
+                conf = torchInitVGG();
                 break;
             default:
                 throw new InvalidInputTypeException("Incorrect model provided.");

@@ -37,8 +37,8 @@ public class Dl4j_Cifar10 {
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = 1000;//CifarLoader.NUM_TRAIN_IMAGES;
-    protected static int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
+    protected static int numTrainExamples = 2000;//CifarLoader.NUM_TRAIN_IMAGES;
+    protected static int numTestExamples = 2000; //CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
     protected static int trainBatchSize;
     protected static int testBatchSize;
@@ -201,14 +201,14 @@ public class Dl4j_Cifar10 {
         network.setListeners(Arrays.asList((IterationListener) new ScoreIterationListener(listenerFreq)));
 
         System.out.println("Train model...");
-        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, normalizeValue, true), nCores);
+        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, normalizeValue, true));
 
         long timeX = System.currentTimeMillis();
         network.fit(cifar);
         long timeY = System.currentTimeMillis();
 
         log.info("Evaluate model....");
-        CifarDataSetIterator cifarTest = new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false);
+        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false));
         Evaluation eval = network.evaluate(cifarTest);
         System.out.println(eval.stats(true));
 
