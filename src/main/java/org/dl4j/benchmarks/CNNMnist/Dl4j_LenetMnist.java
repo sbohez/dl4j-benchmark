@@ -1,11 +1,10 @@
 package org.dl4j.benchmarks.CNNMnist;
 
 
-import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.dl4j.benchmarks.TestModels.LeNet;
+import org.dl4j.benchmarks.Models.LeNet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

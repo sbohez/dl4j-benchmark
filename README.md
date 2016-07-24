@@ -1,58 +1,58 @@
 # Dl4j-Benchmarks
 
-Repository to track Dl4j benchmarks. Work in progress.
+Repository to track Dl4j benchmarks with comparisons internally and against other well known frameworks. Also setup to track performance on cpu and gpu. Note CNNs are run with cuDNN.  
 
-## Examples
-    - MLP
-    - Lenet
-    - Cifar10
+#### Examples
+    - MLP: match all platforms to one model structure
+    - Lenet: match all platforms to one model structure
+    - Cifar10: different platform examples and match different dl4j structures for comparison 
+    - Other: experiments still being shaped
 
-## Run from CLI
-
-Caffe: sh \<*train bash file*>
-Dl4j: mvn clean install && java -cp target/Dl4j-Benchmarks-0.4.0-SNAPSHOT.jar \<*class path*> 
-TensorFlow: python \<*filename*>
-Torch: th \<*filename*>
 
 ## Packages
-Caffe (vr3)
+Main packages included for comparison so far...
+
+**Caffe (vr3)**
     - Install: http://caffe.berkeleyvision.org/installation.html
     - Tricky to complete successfully based on gcc version, BLAS and cuda
+    - Cmd to run: sh \<*train bash file*>
 
-Dl4j (v0.4.1)
+**Dl4j (v0.4.1)**
     - Install: http://deeplearning4j.org/quickstart
     - Setup packages: add to pom.xml
+    - Cmd to run: mvn clean install && java -cp target/Dl4j-Benchmarks-0.4.0-SNAPSHOT.jar \<*class path*>
 
-Tensorflow(v0.9.0)
+**Tensorflow(v0.9.0)**
     - Install: https://www.tensorflow.org/versions/r0.9/get_started/os_setup.html
     - Setup packages: pip install \<*filename*>
+    - Cmd to run: python \<*filename*>
 
-Torch (v7)
+**Torch (v7)**
     - Install: http://torch.ch/docs/getting-started.html 
     - Setup packages: luarocks install \<*filename*>
+    - Cmd to run: th \<*filename*>
 
-## Switch CPU vs GPU 
-Caffe: 
+##  CPU vs GPU Switch 
+**Caffe**
     - Change flag in solver prototext
+    - Pass in -gpu # for the number of GPUs to use or all for all
     
-Dl4j
+**Dl4j**
     - Change pom.xml file backend between nd4j-native and nd4j-cuda-7.5
 
-TensforFlow:
-    - put the following in .bashrc or .bash_profile: export CUDA_VISIBLE_DEVICES=
-        - empty for CPU and numbers for number of GPUs
-    - set config = tf.ConfigProto(device_count={'GPU': #}) and pass into the session
+**TensforFlow**:
+    - Set config = tf.ConfigProto(device_count={'GPU': #}) and pass into the session
         - replace # with 0 for CPU and 1 or more for GPU
     - cuDNN required for CNN models
     - Checkout for configuration fixes: https://stackoverflow.com/questions/37663064/cudnn-compile-configuration-in-tensorflow
 
-Torch
-    - put the following in .bashrc or .bash_profile: export CUDA_VISIBLE_DEVICES=
-        - empty for CPU and numbers for number of GPUs
+**Torch**
+    - Utilize cutorch, cunn, cudnn packages for cuda backend integration 
 
+If multiple GPUs, control how many used by adding 'export CUDA_VISIBLE_DEVICES=' to .bashrc or .bash_profile and setting empty for CPU and 0,1,2,3 for GPUs (0 if just one and 0,1 if just two) 
     
-## Test Setup 
-Running benchmarkcs on following system setup
+## Setup Currently Used for Benchmarks 
+Running benchmarks on following system setup:
     - Ubuntu 14.0.4
     - 60GB RAM 
     - 32 Intel Xeon E5-2670 CPUs

@@ -1,4 +1,4 @@
-package org.dl4j.benchmarks.TestModels;
+package org.dl4j.benchmarks.Models;
 
 /**
  * ImageNet DataMode

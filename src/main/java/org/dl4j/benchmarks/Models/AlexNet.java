@@ -1,4 +1,4 @@
-package org.dl4j.benchmarks.TestModels;
+package org.dl4j.benchmarks.Models;
 
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.*;
