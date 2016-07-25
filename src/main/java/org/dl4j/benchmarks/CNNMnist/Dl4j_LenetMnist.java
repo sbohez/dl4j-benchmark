@@ -8,6 +8,7 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.parallelism.ParallelWrapper;
 import org.dl4j.benchmarks.Models.LeNet;
 import org.dl4j.benchmarks.Utils.BenchmarkUtil;
+import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +32,8 @@ public class Dl4j_LenetMnist {
     // Multiple GPUs
     public final static boolean multiGPU = false;
     public final static int buffer = 8;
-    public final static int workers = 4;
-    public final static int avgFrequency = 100;
+    public final static int workers = 8;
+    public final static int avgFrequency = 3;
 
     public static void main(String[] args) throws Exception {
         long totalTime = System.currentTimeMillis();
@@ -44,6 +45,7 @@ public class Dl4j_LenetMnist {
         MultiLayerNetwork network = new LeNet(height, width, channels, numLabels, seed, iterations).init();
         long trainTime = System.currentTimeMillis();
         if(multiGPU) {
+            CudaEnvironment.getInstance().getConfiguration().allowMultiGPU(true).allowCrossDeviceAccess(true);
             ParallelWrapper wrapper = BenchmarkUtil.multiGPUModel(network, buffer, workers, avgFrequency);
             wrapper.fit(mnistTrain);
         } else {

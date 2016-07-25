@@ -13,6 +13,7 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.parallelism.ParallelWrapper;
 import org.dl4j.benchmarks.Utils.BenchmarkUtil;
+import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
@@ -40,8 +41,8 @@ public class Dl4j_MLPMnistSingleLayer{
     // Multiple GPUs
     public final static boolean multiGPU = false;
     public final static int buffer = 8;
-    public final static int workers = 4;
-    public final static int avgFrequency = 100;
+    public final static int workers = 8;
+    public final static int avgFrequency = 3;
 
     public static void main(String[] args) throws Exception {
             long totalTime = System.currentTimeMillis();
@@ -94,6 +95,7 @@ public class Dl4j_MLPMnistSingleLayer{
 //            log.info("Train model....");
             long trainTime = System.currentTimeMillis();
             if(multiGPU) {
+                CudaEnvironment.getInstance().getConfiguration().allowMultiGPU(true).allowCrossDeviceAccess(true);
                 ParallelWrapper wrapper = BenchmarkUtil.multiGPUModel(network, buffer, workers, avgFrequency);
                 wrapper.fit(mnistTrain);
             } else {
