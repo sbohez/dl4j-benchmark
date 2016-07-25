@@ -26,6 +26,7 @@ Main packages included for comparison so far...
     - Install: https://www.tensorflow.org/versions/r0.9/get_started/os_setup.html
     - Setup packages: pip install \<*filename*>
     - Cmd to run: python \<*filename*>
+    - Note required to compile from source if using cuDNN > 4
 
 **Torch (v7)**
     - Install: http://torch.ch/docs/getting-started.html 

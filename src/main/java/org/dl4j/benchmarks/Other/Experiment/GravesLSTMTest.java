@@ -1,4 +1,4 @@
-package org.dl4j.benchmarks.BahrampourStudy;
+package org.dl4j.benchmarks.Other.Experiment;
 
 
 import org.deeplearning4j.nn.conf.BackpropType;
