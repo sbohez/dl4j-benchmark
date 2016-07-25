@@ -23,7 +23,7 @@ HEIGHT = 28
 WIDTH = 28
 CHANNELS = 1
 IMAGE_PIXELS = mnist.IMAGE_PIXELS
-CORE_TYPE = 'CPU'
+CORE_TYPE = 'GPU'
 DTYPE = tf.float32
 DEVICE = '/cpu:0' if(CORE_TYPE == 'CPU') else '/gpu:0'
 NUM_GPUS = 0 if(CORE_TYPE == 'CPU') else 1

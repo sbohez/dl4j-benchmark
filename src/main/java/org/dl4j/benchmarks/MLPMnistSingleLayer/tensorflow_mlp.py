@@ -19,7 +19,7 @@ from six.moves import urllib, xrange
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
 IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE * 1
-CORE_TYPE = 'CPU'
+CORE_TYPE = 'GPU'
 DTYPE = tf.float32
 
 # '/gpu:1' if multiple

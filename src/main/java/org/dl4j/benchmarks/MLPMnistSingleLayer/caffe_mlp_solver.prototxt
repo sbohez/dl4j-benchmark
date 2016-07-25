@@ -26,5 +26,5 @@ max_iter: 7032
 snapshot: 7032
 snapshot_prefix: "simple_results"
 # solver mode: CPU or GPU
-solver_mode: CPU
+solver_mode: GPU
 type: "Nesterov"
