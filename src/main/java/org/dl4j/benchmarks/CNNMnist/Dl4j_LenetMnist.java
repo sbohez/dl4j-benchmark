@@ -25,14 +25,14 @@ public class Dl4j_LenetMnist {
     public final static int testBatchSize = 100;
     public final static int epochs = 11;
     public final static int iterations = 1;
-    public final static int seed = 123;
+    public final static int seed = 42;
     public final static int nCores = 32;
 
     // Multiple GPUs
     public final static boolean multiGPU = false;
     public final static int buffer = 8;
     public final static int workers = 4;
-    public final static int avgFrequency = 3;
+    public final static int avgFrequency = 100;
 
     public static void main(String[] args) throws Exception {
         long totalTime = System.currentTimeMillis();

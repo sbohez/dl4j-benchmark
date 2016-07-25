@@ -11,6 +11,7 @@ import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.parallelism.ParallelWrapper;
 import org.dl4j.benchmarks.Utils.BenchmarkUtil;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -25,9 +26,24 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class Dl4j_MLPMnistSingleLayer{
-        private static Logger log = LoggerFactory.getLogger(Dl4j_MLPMnistSingleLayer.class);
+    private static Logger log = LoggerFactory.getLogger(Dl4j_MLPMnistSingleLayer.class);
+    protected static final int height = 28;
+    protected static final int width = 28;
+    public final static int channels = 1;
+    public final static int numLabels = 10;
+    public final static int batchSize = 128;
+    public final static int epochs = 15;
+    public final static int iterations = 1;
+    public final static int seed = 42;
+    public final static int nCores = 32;
 
-        public static void main(String[] args) throws Exception {
+    // Multiple GPUs
+    public final static boolean multiGPU = false;
+    public final static int buffer = 8;
+    public final static int workers = 4;
+    public final static int avgFrequency = 100;
+
+    public static void main(String[] args) throws Exception {
             long totalTime = System.currentTimeMillis();
 //            CudaEnvironment.getInstance().getConfiguration()
 //                    .setFirstMemory(AllocationStatus.DEVICE)
@@ -37,12 +53,7 @@ public class Dl4j_MLPMnistSingleLayer{
 //                    .enableDebug(false)
 //                    .setVerbose(false);
 
-            final int height = 28;
-            final int width = 28;
-            int outputNum = 10;
-            int batchSize = 128;
-            int rngSeed = 123;
-            int epochs = 15;
+
             int hiddenNodes = 1000;
             double learningRate = 6e-3;
             double momentum = 0.9;
@@ -50,13 +61,13 @@ public class Dl4j_MLPMnistSingleLayer{
 
             //Get the DataSetIterators:
             long dataLoadTime = System.currentTimeMillis();
-            DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, true, rngSeed);
-            DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, rngSeed);
+            DataSetIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345));
+            DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, seed);
             dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
 //            log.info("Build model....");
             MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
-                    .seed(rngSeed)
+                    .seed(seed)
                     .activation("relu")
                     .weightInit(WeightInit.XAVIER)
                     .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
@@ -71,7 +82,7 @@ public class Dl4j_MLPMnistSingleLayer{
                             .build())
                     .layer(1, new OutputLayer.Builder(LossFunction.NEGATIVELOGLIKELIHOOD)
                             .nIn(hiddenNodes)
-                            .nOut(outputNum)
+                            .nOut(numLabels)
                             .activation("softmax")
                             .build())
                     .pretrain(false).backprop(true)
@@ -82,9 +93,11 @@ public class Dl4j_MLPMnistSingleLayer{
 
 //            log.info("Train model....");
             long trainTime = System.currentTimeMillis();
-            for(int i=0; i < epochs; i++) {
+            if(multiGPU) {
+                ParallelWrapper wrapper = BenchmarkUtil.multiGPUModel(network, buffer, workers, avgFrequency);
+                wrapper.fit(mnistTrain);
+            } else {
                 network.fit(mnistTrain);
-                if (i != epochs-1) mnistTrain.reset();
             }
             trainTime = System.currentTimeMillis() - trainTime;
 
