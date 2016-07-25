@@ -30,7 +30,7 @@ public class Dl4j_LenetMnist {
     public final static int nCores = 32;
 
     // Multiple GPUs
-    public final static boolean multiGPU = false;
+    public final static boolean multiGPU = true;
     public final static int buffer = 8;
     public final static int workers = 8;
     public final static int avgFrequency = 3;
@@ -40,7 +40,7 @@ public class Dl4j_LenetMnist {
         long dataLoadTime = System.currentTimeMillis();
         DataSetIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(trainBatchSize,true,12345));
         DataSetIterator mnistTest = new MnistDataSetIterator(testBatchSize,false,12345);
-        dataLoadTime = dataLoadTime - System.currentTimeMillis();
+        dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
         MultiLayerNetwork network = new LeNet(height, width, channels, numLabels, seed, iterations).init();
         long trainTime = System.currentTimeMillis();
@@ -56,9 +56,9 @@ public class Dl4j_LenetMnist {
         long testTime = System.currentTimeMillis();
         Evaluation eval = network.evaluate(mnistTest);
         log.info(eval.stats());
-        testTime = testTime - System.currentTimeMillis();
+        testTime = System.currentTimeMillis() - testTime;
 
-        totalTime = totalTime - System.currentTimeMillis();
+        totalTime = System.currentTimeMillis() - totalTime ;
         log.info("****************Example finished********************");
         BenchmarkUtil.printTime("Data", dataLoadTime);
         BenchmarkUtil.printTime("Train", trainTime);

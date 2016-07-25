@@ -215,9 +215,9 @@ public class Dl4j_Cifar10 {
         long testTime = System.currentTimeMillis();
         Evaluation eval = network.evaluate(cifarTest);
         System.out.println(eval.stats(true));
-        testTime = testTime - System.currentTimeMillis();
+        testTime =  System.currentTimeMillis() - testTime;
 
-        totalTime = totalTime - System.currentTimeMillis();
+        totalTime = System.currentTimeMillis() - totalTime;
 
         log.info("****************Example finished********************");
         BenchmarkUtil.printTime("Data", dataLoadTime);

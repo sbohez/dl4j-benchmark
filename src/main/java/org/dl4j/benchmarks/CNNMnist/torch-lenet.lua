@@ -1,17 +1,22 @@
---
+-- Torch7 Lenet
 --
 -- Reference: https://github.com/torch/demos/blob/master/train-a-digit-classifier/train-on-mnist.lua
---
 
 require 'torch'
 require 'nn'
 require 'optim'
 require 'src/main/resources/torch-data/dataset-mnist'
 --mnist = require 'mnist' -- alternative but was giving bad results
+require 'cunn'
+require 'cudnn'
+require 'cutorch'
 
+core_type = 'gpu'
 total_time = sys.clock()
 torch.manualSeed(42)
 torch.setdefaulttensortype('torch.FloatTensor')
+cudnn.verbose = false
+cuddn.benchmark = false
 
 -- epoch tracker
 opt = {
@@ -26,7 +31,11 @@ opt = {
     height = 28,
     width = 28,
     ninputs = 28*28,
-    coefL2 = 5e-4
+    coefL2 = 5e-4,
+    cudnn_fastest = true,
+    cudnn_deterministic = false,
+    multiply_input_factor = 1,
+    nGPU = 4,
 }
 
 optimState = {
@@ -39,6 +48,44 @@ optimState = {
 
 classes = {'1','2','3','4','5','6','7','8','9','10'}
 geometry = {opt.height,opt.width }
+
+------------------------------------------------------------
+-- support functions
+
+function makeDataParallelTable(model)
+    if nGPU > 1 then
+        local gpus = torch.range(1, nGPU):totable()
+        local fastest, benchmark = cudnn.fastest, cudnn.benchmark
+
+        local dpt = nn.DataParallelTable(1, true, true)
+        :add(model, gpus)
+        :threads(function()
+            local cudnn = require 'cudnn'
+            cudnn.fastest, cudnn.benchmark = fastest, benchmark
+        end)
+        dpt.gradInput = nil
+
+        model = dpt:cuda()
+    end
+    return model
+end
+
+function convertCuda(model)
+    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
+    add(opt.multiply_input_factor ~= 1, nn.MulConstant(opt.multiply_input_factor):cuda())
+    cudnn.convert(model, cudnn)
+    cudnn.benchmark = true
+    if opt.cudnn_fastest then
+        for i,v in ipairs(net:findModules'cudnn.SpatialConvolution') do v:fastest() end
+    end
+    if opt.cudnn_deterministic then
+        model:apply(function(m) if m.setMode then m:setMode(1,1,1) end end)
+    end
+    model:add(makeDataParallelTable(model))
+
+    return model
+
+end
 
 ------------------------------------------------------------
 -- print('Load data')
@@ -76,34 +123,30 @@ model:add(nn.Linear(50*5*5, 500))
 
 model:add(nn.ReLU())
 model:add(nn.Linear(500, #classes))
+model:add(nn.LogSoftMax())
 
---function w_init_xavier(fan_in, fan_out)
---    return math.sqrt(2/(fan_in + fan_out))
---end
---
---
---function w_init_xavier_caffe(fan_in, fan_out)
---    return math.sqrt(1/fan_in)
---end
---
---for i=1, #model.modules do
---    method = w_init_xavier_caffe
---    local m = model.modules[i]
---    if m.__typename == 'nn.SpatialConvolutionMM' then
---        m:reset(method(m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW))
---    elseif m.__typename == 'nn.Linear' then
---        m:reset(method(m.weight:size(2), m.weight:size(1)))
---    end
---
---    if m.bias then
---        m.bias:zero()
---    end
---end
+if(core_type == 'gpu') then
+    model:cuda()
+    model = convertCuda(model)
+end
+
+for i=1, #model.modules do
+    method = w_init_xavier_caffe
+    local m = model.modules[i]
+    if m.__typename == 'nn.SpatialConvolutionMM' then
+        m:reset(method(m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW))
+        m.bias = nil
+        m.gradBias = nil
+    elseif m.__typename == 'nn.Linear' then
+        m:reset(method(m.weight:size(2), m.weight:size(1)))
+        v.bias:zero()
+    end
+end
+
 
 --flattens & creates views for optim to process param and gradients
 parameters,gradParameters = model:getParameters()
 
-model:add(nn.LogSoftMax())
 criterion = nn.ClassNLLCriterion()
 
 --print(model)
@@ -117,8 +160,8 @@ function train(dataset)
 --    loops from 1 to full dataset size by batchsize
     for t = 1,opt.numExamples,opt.batchSize do
         -- create mini batch
-        local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
-        local targets = torch.Tensor(opt.batchSize)
+        local inputs = core_type == 'gpu' and torch.CudaTensor(opt.batchSize,1,28,2) or torch.Tensor(opt.batchSize,1,28,28)
+        local targets = core_type == 'gpu' and torch.CudaTensor(opt.batchSize):zero() or torch.zeros(opt.batchSize)
         local k = 1
         for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
             -- load new sample
@@ -142,6 +185,8 @@ function train(dataset)
 --            k = k + 1
 --        end
 
+        inputs = core_type == 'gpu' and inputs:cuda() or inputs
+
         -- create closure to evaluate f(X) and df/dX
         local feval = function(x)
             -- just in case:
@@ -164,11 +209,12 @@ function train(dataset)
             model:backward(inputs, df_do)
 
             -- penalties (L1 and L2):
-            local norm= torch.norm
-            -- Loss:
-            f = f + opt.coefL2 * norm(parameters,2)^2/2
-            -- Gradients:
-            gradParameters:add(parameters:clone():mul(opt.coefL2))
+--            local norm= torch.norm
+--            -- Loss:
+--            f = f + opt.coefL2 * norm(parameters,2)^2/2
+--            -- Gradients:
+--            gradParameters:add(parameters:clone():mul(opt.coefL2))
+            loss = loss + f
 
             -- return f and df/dX
             return f, gradParameters
