@@ -5,6 +5,7 @@ import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.dl4j.benchmarks.Models.LeNet;
+import org.dl4j.benchmarks.Utils.BenchmarkUtil;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class Dl4j_LenetMnist {
             network.fit(mnistTrain);
             if (i != epochs-1) mnistTrain.reset();
         }
-        trainTime = trainTime - System.currentTimeMillis();
+        trainTime = System.currentTimeMillis() - trainTime;
 
         long testTime = System.currentTimeMillis();
         Evaluation eval = network.evaluate(mnistTest);
@@ -49,10 +50,10 @@ public class Dl4j_LenetMnist {
 
         totalTime = totalTime - System.currentTimeMillis();
         log.info("****************Example finished********************");
-        log.info("Data load time: {}", dataLoadTime);
-        log.info("Train time: {}", trainTime);
-        log.info("Test time: {}", testTime);
-        log.info("Total time: {}", totalTime);
+        BenchmarkUtil.printTime("Data", dataLoadTime);
+        BenchmarkUtil.printTime("Train", trainTime);
+        BenchmarkUtil.printTime("Test", testTime);
+        BenchmarkUtil.printTime("Total", totalTime);
 
     }
 }

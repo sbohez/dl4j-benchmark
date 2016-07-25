@@ -13,6 +13,7 @@ import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.dl4j.benchmarks.Models.CifarModels;
 import org.dl4j.benchmarks.Models.CifarModeEnum;
+import org.dl4j.benchmarks.Utils.BenchmarkUtil;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -204,24 +205,25 @@ public class Dl4j_Cifar10 {
         long dataLoadTime = System.currentTimeMillis();
         MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, normalizeValue, true));
         MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false));
-        dataLoadTime = dataLoadTime - System.currentTimeMillis();
+        dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
         long trainTime = System.currentTimeMillis();
         network.fit(cifar);
-        trainTime = trainTime - System.currentTimeMillis();
+        trainTime = System.currentTimeMillis() - trainTime;
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
         Evaluation eval = network.evaluate(cifarTest);
         System.out.println(eval.stats(true));
         testTime = testTime - System.currentTimeMillis();
+
         totalTime = totalTime - System.currentTimeMillis();
 
         log.info("****************Example finished********************");
-        log.info("Data load time: {}", dataLoadTime);
-        log.info("Train time: {}", trainTime);
-        log.info("Test time: {}", testTime);
-        log.info("Total time: {}", totalTime);
+        BenchmarkUtil.printTime("Data", dataLoadTime);
+        BenchmarkUtil.printTime("Train", trainTime);
+        BenchmarkUtil.printTime("Test", testTime);
+        BenchmarkUtil.printTime("Total", totalTime);
 
     }
 

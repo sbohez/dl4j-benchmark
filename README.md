@@ -51,7 +51,7 @@ Main packages included for comparison so far...
 
 If multiple GPUs, control how many used by adding 'export CUDA_VISIBLE_DEVICES=' to .bashrc or .bash_profile and setting empty for CPU and 0,1,2,3 for GPUs (0 if just one and 0,1 if just two) 
     
-## Setup Currently Used for Benchmarks 
+## Benchmark Setup 
 Running benchmarks on following system setup:
     - Ubuntu 14.0.4
     - 60GB RAM 

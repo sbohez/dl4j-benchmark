@@ -11,12 +11,15 @@ import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.dl4j.benchmarks.Utils.BenchmarkUtil;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -49,7 +52,7 @@ public class Dl4j_MLPMnistSingleLayer{
             long dataLoadTime = System.currentTimeMillis();
             DataSetIterator mnistTrain = new MnistDataSetIterator(batchSize, true, rngSeed);
             DataSetIterator mnistTest = new MnistDataSetIterator(batchSize, false, rngSeed);
-            dataLoadTime = dataLoadTime - System.currentTimeMillis();
+            dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
 //            log.info("Build model....");
             MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
@@ -83,23 +86,23 @@ public class Dl4j_MLPMnistSingleLayer{
                 network.fit(mnistTrain);
                 if (i != epochs-1) mnistTrain.reset();
             }
-            trainTime = trainTime - System.currentTimeMillis();
+            trainTime = System.currentTimeMillis() - trainTime;
 
 //            log.info("Evaluate model....");
             long testTime = System.currentTimeMillis();
             Evaluation eval = network.evaluate(mnistTest);
             log.info(eval.stats());
-            testTime = testTime - System.currentTimeMillis();
+            testTime = System.currentTimeMillis() - testTime;
 
-            totalTime = totalTime - System.currentTimeMillis();
+            totalTime = System.currentTimeMillis() - totalTime;
             log.info("****************Example finished********************");
-            log.info("Data load time: {}", dataLoadTime);
-            log.info("Train time: {}", trainTime);
-            log.info("Test time: {}", testTime);
-            log.info("Total time: {}", totalTime);
-
+            BenchmarkUtil.printTime("Data", dataLoadTime);
+            BenchmarkUtil.printTime("Train", trainTime);
+            BenchmarkUtil.printTime("Test", testTime);
+            BenchmarkUtil.printTime("Total", totalTime);
 
         }
+
 
 }
 
