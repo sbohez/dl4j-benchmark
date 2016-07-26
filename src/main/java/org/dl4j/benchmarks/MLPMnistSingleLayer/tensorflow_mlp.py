@@ -122,10 +122,10 @@ def run():
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
-    print('Data load time: %s' % data_load_time*1000)
-    print('Train time: %s' % train_time*1000)
-    print('Test time: %s' % test_time*1000)
-    print('Total time: %s' % total_time*1000)
+    print('Data load time: %s milliseconds' % data_load_time*1000)
+    print('Train time: %s milliseconds' % train_time*1000)
+    print('Test time: %s milliseconds' % test_time*1000)
+    print('Total time: %s milliseconds' % total_time*1000)
     sess.close
 
 if __name__ == "__main__":

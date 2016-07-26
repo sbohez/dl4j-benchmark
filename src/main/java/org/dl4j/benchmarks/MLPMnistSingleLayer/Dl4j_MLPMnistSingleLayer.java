@@ -42,7 +42,7 @@ public class Dl4j_MLPMnistSingleLayer{
     public final static boolean multiGPU = false;
     public final static int buffer = 8;
     public final static int workers = 8;
-    public final static int avgFrequency = 1;
+    public final static int avgFrequency = 3;
 
     public static void main(String[] args) throws Exception {
             long totalTime = System.currentTimeMillis();

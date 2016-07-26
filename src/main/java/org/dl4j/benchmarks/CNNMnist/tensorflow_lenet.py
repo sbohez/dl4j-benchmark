@@ -25,7 +25,7 @@ CHANNELS = 1
 IMAGE_PIXELS = mnist.IMAGE_PIXELS
 CORE_TYPE = 'GPU'
 DTYPE = tf.float32
-DEVICE = '/cpu:0' if(CORE_TYPE == 'CPU') else '/gpu:0'
+DEVICE = '/cpu:0' #if(CORE_TYPE == 'CPU') else '/gpu:0'
 NUM_GPUS = 0 if(CORE_TYPE == 'CPU') else 1
 CUDNN = False
 DATA_DIR = os.getcwd() + "src/main/resources/tf_data/"
@@ -54,7 +54,6 @@ tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
 # Tips Learned
 # cpu BiasOp only support NHWC
 # limits to using tf.float64 on certain functions - avoid
-
 
 def load_data():
     return input_data.read_data_sets(DATA_DIR) if(ONE_HOT == False) else \
@@ -198,7 +197,7 @@ def do_eval(sess, logits, images_placeholder, labels_placeholder, data_set):
         for _ in xrange(FLAGS.test_iter):
             feed_dict = _fill_feed_dict(data_set, images_placeholder, labels_placeholder)
             correct_count += sess.run(_evaluation_straight(logits, labels_placeholder), feed_dict=feed_dict)
-        print("Accuracy 1: %0.04f" % (true_count / num_examples))
+        print("Accuracy 1: %0.04f" % (correct_count / num_examples))
     else:
         for _ in xrange(FLAGS.test_iter):
             feed_dict = _fill_feed_dict(data_set, images_placeholder, labels_placeholder)
@@ -225,10 +224,10 @@ def run():
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
-    print('Data load time: %s' % data_load_time*1000)
-    print('Train time: %s' % train_time*1000)
-    print('Test time: %s' % test_time*1000)
-    print('Total time: %s' % total_time*1000)
+    print('Data load time: %s milliseconds' % data_load_time*1000)
+    print('Train time: %s milliseconds' % train_time*1000)
+    print('Test time: %s milliseconds' % test_time*1000)
+    print('Total time: %s milliseconds' % total_time*1000)
     sess.close
 
 
