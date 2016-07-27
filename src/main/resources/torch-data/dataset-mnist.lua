@@ -11,12 +11,12 @@ mnist.path_dataset = 'src/main/resources/torch-data'
 mnist.path_trainset = paths.concat(mnist.path_dataset, 'train_32x32.t7')
 mnist.path_testset = paths.concat(mnist.path_dataset, 'test_32x32.t7')
 
+
 function mnist.download()
     if not paths.filep(mnist.path_trainset) or not paths.filep(mnist.path_testset) then
         local remote = mnist.path_remote
         local tar = paths.basename(remote)
         os.execute('wget ' .. remote .. '; ' .. 'tar xvf ' .. tar .. '; rm ' .. tar)
-        os.execute('mv mnist.t7/* src/main/resources/torch-data ; rm -rf mnist.t7')
     end
 end
 
@@ -48,9 +48,9 @@ function mnist.loadDataset(fileName, maxLoad)
     dataset.data = data
     dataset.labels = labels
 
-    function dataset:normalize(mean_, std_)
-        local mean = mean_ or data:view(data:size(1), -1):mean(1)
-        local std = std_ or data:view(data:size(1), -1):std(1, true)
+    function dataset:normalize()
+        local mean = data:view(data:size(1), -1):mean(1)
+        local std = data:view(data:size(1), -1):std(1, true)
         for i=1,data:size(1) do
             data[i]:add(-mean[1][i])
             if std[1][i] > 0 then
@@ -60,9 +60,9 @@ function mnist.loadDataset(fileName, maxLoad)
         return mean, std
     end
 
-    function dataset:normalizeGlobal(mean_, std_)
-        local std = std_ or data:std()
-        local mean = mean_ or data:mean()
+    function dataset:normalizeGlobal()
+        local std = data:std()
+        local mean = data:mean()
         data:add(-mean)
         data:mul(1/std)
         return mean, std
@@ -70,10 +70,6 @@ function mnist.loadDataset(fileName, maxLoad)
 
     function dataset:size()
         return nExample
-    end
-
-    function dataset:transform(channels_, height_, width_)
-        data:resize(channels_, height_, width_)
     end
 
     local labelvector = torch.zeros(10)

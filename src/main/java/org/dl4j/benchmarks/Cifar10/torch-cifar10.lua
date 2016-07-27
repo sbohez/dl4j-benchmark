@@ -11,6 +11,7 @@ require 'cunn'
 require 'cudnn'
 local c = require 'trepl.colorize'
 local json = require 'cjson'
+require 'src/main/java/org/dl4j/benchmarks/Utils/benchmark-util'
 
 -- for memory optimizations and graph generation
 local optnet = require 'optnet'
@@ -69,24 +70,6 @@ print(opt)
 ------------------------------------------------------------
 -- support functions
 
-function makeDataParallelTable(model, nGPU)
-    if nGPU > 1 then
-        local gpus = torch.range(1, nGPU):totable()
-        local fastest, benchmark = cudnn.fastest, cudnn.benchmark
-
-        local dpt = nn.DataParallelTable(1, true, true)
-        :add(model, gpus)
-        :threads(function()
-            local cudnn = require 'cudnn'
-            cudnn.fastest, cudnn.benchmark = fastest, benchmark
-        end)
-        dpt.gradInput = nil
-
-        model = dpt:cuda()
-    end
-    return model
-end
-
 do -- random crop
 local RandomCrop, parent = torch.class('nn.RandomCrop', 'nn.Module')
 
@@ -140,7 +123,6 @@ function BatchFlip:updateOutput(input)
     return self.output
 end
 end
-
 ------------------------------------------------------------
 -- print('Load data')
 data_load_time = sys.clock()
@@ -151,7 +133,7 @@ data_load_time = sys.clock() - data_load_time
 
 ------------------------------------------------------------
 -- print('Build model')
-
+print(c.blue '==>' ..' loading data')
 function vgg()
     local vgg = nn.Sequential()
     -- building block
@@ -294,7 +276,7 @@ function train()
 end
 ------------------------------------------------------------
 -- print('Evaluate')
-
+confusion = optim.ConfusionMatrix(classes)
 function test()
     model:evaluate()
     local confusion = optim.ConfusionMatrix(opt.num_classes)
@@ -338,7 +320,7 @@ torch.save(opt.save..'/model.t7', net:clearState())
 total_time = sys.clock() - total_time
 
 print("****************Example finished********************")
-print('Data load time: %s' % (data_load_time))
-print('Train time: %s' % train_time)
-print('Test time: %s' % test_time)
-print('Total time: %s' % total_time)
+util.printTime('Data load', data_load_time)
+util.printTime('Train', train_time)
+util.printTime('Test', test_time)
+util.printTime('Total', total_time)

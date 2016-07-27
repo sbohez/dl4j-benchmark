@@ -66,17 +66,26 @@ def _inference(images):
         logits = tf.matmul(hidden1, weights) + biases
     return logits
 
+
 def _setup_train(y, y_):
     cross_entropy = -tf.reduce_sum(y_*tf.log(y)) # softmax & cross entropy
     optimizer = tf.train.MomentumOptimizer(FLAGS.learning_rate, FLAGS.momentum)
     global_step = tf.Variable(0, name='global_step', trainable=False)
     return optimizer.minimize(cross_entropy, global_step=global_step)
 
+
 def _evaluation(logits, labels):
     """Evaluate the quality of the logits at predicting the label.
     """
     correct_pred = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
     return tf.reduce_sum(tf.cast(correct_pred, tf.float32))
+
+
+def printTime(time_type, time):
+    min = int(round(time/60))
+    sec = int(round(time - min*60))
+    milli = time * 1000
+    print(time_type + ' load time: %s min %s sec | %s millisec' %(min, sec, milli))
 
 
 def run():
@@ -119,14 +128,16 @@ def run():
         correct_count += sess.run(_evaluation(y, y_), {x: batch_xs, y_: batch_ys})
     print("Accuracy: ", (correct_count / num_examples)) #(accuracy/FLAGS.test_iter))
     test_time = time.time() - test_time
+    sess.close
+
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
-    print('Data load time: %s milliseconds' % data_load_time*1000)
-    print('Train time: %s milliseconds' % train_time*1000)
-    print('Test time: %s milliseconds' % test_time*1000)
-    print('Total time: %s milliseconds' % total_time*1000)
-    sess.close
+    printTime('Data load', data_load_time)
+    printTime('Train', train_time)
+    printTime('Test', test_time)
+    printTime('Total', total_time)
+
 
 if __name__ == "__main__":
     run()

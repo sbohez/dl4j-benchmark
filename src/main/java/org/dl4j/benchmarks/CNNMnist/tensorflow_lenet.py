@@ -27,7 +27,7 @@ CORE_TYPE = 'GPU'
 DTYPE = tf.float32
 DEVICE = '/cpu:0' #if(CORE_TYPE == 'CPU') else '/gpu:0'
 NUM_GPUS = 0 if(CORE_TYPE == 'CPU') else 1
-CUDNN = False
+CUDNN = True
 DATA_DIR = os.getcwd() + "src/main/resources/tf_data/"
 DATA_FORMAT = 'NHWC' # number examples, height, width, channels
 ONE_HOT = True
@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_integer('max_iter', 10000, 'Number of iterations to run trai
 tf.app.flags.DEFINE_integer('test_iter', 100, 'Number of iterations to run trainer.')
 tf.app.flags.DEFINE_integer('ffn1', 500, 'Number of units in feed forward layer 1.')
 tf.app.flags.DEFINE_integer('batch_size', 66, 'Batch size. Must divide evenly into the dataset sizes.')
-tf.app.flags.DEFINE_integer('test_batch_size', 100, 'Test batch size. Must divide evenly into the dataset sizes.')
+tf.app.flags.DEFINE_integer('test_batch_size', 66, 'Test batch size. Must divide evenly into the dataset sizes.')
 tf.app.flags.DEFINE_string('train_dir', 'data', 'Directory to put the training data.')
 tf.app.flags.DEFINE_boolean('fake_data', False, 'If true, uses fake data for unit testing.')
 tf.app.flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
@@ -49,11 +49,13 @@ tf.app.flags.DEFINE_float('decay_rate', 1e-3, 'Learning rate decay rate.')
 tf.app.flags.DEFINE_float('policy_power', 0.75, 'Policy power.') # current inverse_time_decay is missing this as part of denom calc
 tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
 
-# TODO add bias learning rate or remove from caffe and dl4j | install latest github to access inverse | test code
+# TODO install latest github to access inverse | test code
 
 # Tips Learned
 # cpu BiasOp only support NHWC
 # limits to using tf.float64 on certain functions - avoid
+# cuDNN required for CNNs on GPU
+# To maintain model in session prevents from setting different test batch size from training like other platform examples on GPU?
 
 def load_data():
     return input_data.read_data_sets(DATA_DIR) if(ONE_HOT == False) else \
@@ -183,9 +185,11 @@ def _evaluation_straight(logits, labels):
     correct = tf.nn.in_top_k(logits, labels, 10) # needs labels to be rank
     return tf.reduce_sum(tf.cast(correct, tf.int32))
 
+
 def _prediction(logits, labels):
     correct_pred = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
     return tf.reduce_sum(tf.cast(correct_pred, tf.float32))
+
 
 def do_eval(sess, logits, images_placeholder, labels_placeholder, data_set):
     """Runs one evaluation against the full epoch of data.
@@ -203,10 +207,13 @@ def do_eval(sess, logits, images_placeholder, labels_placeholder, data_set):
             feed_dict = _fill_feed_dict(data_set, images_placeholder, labels_placeholder)
             correct_count += sess.run(_prediction(logits, labels_placeholder), feed_dict=feed_dict)
         print("Accuracy: ", (correct_count / num_examples)) #(accuracy/FLAGS.test_iter))
-#         # Example of getting the predictions
-#         prediction = tf.argmax(labels_placeholder,1)
-#         print("predictions", prediction.eval(feed_dict=_fill_feed_dict(data_sets.test, images_placeholder, labels_placeholder),
-#                          session=sess))
+
+
+def printTime(time_type, time):
+    min = int(round(time/60))
+    sec = int(round(time - min*60))
+    milli = time * 1000
+    print(time_type + ' load time: %s min %s sec | %s millisec' %(min, sec, milli))
 
 
 def run():
@@ -219,16 +226,17 @@ def run():
     sess, logits, images_placeholder, labels_placeholder, train_time = run_training(data_sets.train)
 
     test_time = time.time()
+    # TODO eval is failing for gpu?
     do_eval(sess, logits, images_placeholder, labels_placeholder, data_sets.test)
     test_time = time.time() - test_time
+    sess.close
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
-    print('Data load time: %s milliseconds' % data_load_time*1000)
-    print('Train time: %s milliseconds' % train_time*1000)
-    print('Test time: %s milliseconds' % test_time*1000)
-    print('Total time: %s milliseconds' % total_time*1000)
-    sess.close
+    printTime('Data load', data_load_time)
+    printTime('Train', train_time)
+    printTime('Test', test_time)
+    printTime('Total', total_time)
 
 
 if __name__ == "__main__":
