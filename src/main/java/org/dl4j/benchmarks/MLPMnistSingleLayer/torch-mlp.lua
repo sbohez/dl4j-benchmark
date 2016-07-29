@@ -16,7 +16,10 @@ total_time = sys.clock()
 torch.manualSeed(42)
 
 --print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name)
+<<<<<<< 67491e2b69b9f367731be4722bff5101804d6737
 
+=======
+>>>>>>> Tensorflow works single gpu. Draft for multi gpu added and in progress. Torch still needs work
 opt = {
     gpu = false,
     usecuDNN = false,
@@ -40,6 +43,7 @@ opt = {
 }
 
 --opt = lapp[[
+<<<<<<< 67491e2b69b9f367731be4722bff5101804d6737
 --   -s,--save                  (default "logs")      subdirectory to save logs
 --   -b,--batchSize             (default 128)          batch size
 --   -r,--learningRate          (default 1)        learning rate
@@ -51,6 +55,29 @@ opt = {
 --   --max_epoch                (default 300)           maximum number of iterations
 --   --backend                  (default nn)            backend
 --   --type                     (default cuda)          cuda/float/cl
+=======
+--   --gpu                     (default false)       use gpu vs cpu
+--   --usecuDNN               (default false)
+--   -b,--batchSize             (default 128)          batch size
+--   -r,--learningRate          (default 1)        learning rate
+--   --numExamples              (default 59904)
+--   --numTestExamples           (default 10000)
+--   --noutputs                   (default 10)
+--   --channels                   (default 1)
+--   --height                    (default 28)
+--   --width                     (default 28)
+--   --ninputs                   (default 28*28)
+--   --nhidden                   (default 1000)
+--   --multiply_input_factor      (default 1)
+--   --nGPU                       (default 4)
+--   --dampening                  (default 0)
+--   --max_epoch               (default 15)          maximum number of epochs
+--   --learningRateDecay        (default 6e-3)      learning rate decay
+--   --weightDecay              (default 1e-4)      weightDecay
+--   --nesterov                 (default true)      nesterov
+--   -m,--momentum              (default 0.9)         momentum
+--   -s,--save                  (default "src/main/resources/torch-data/logs")      subdirectory to save logs
+>>>>>>> Tensorflow works single gpu. Draft for multi gpu added and in progress. Torch still needs work
 --]]
 
 optimState = {

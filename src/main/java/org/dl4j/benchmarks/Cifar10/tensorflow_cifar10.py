@@ -36,7 +36,7 @@ INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
 # names of the summaries when visualizing a model.
-TOWER_NAME = 'tensor_flow_cifar_tower'
+TOWER_NAME = 'cifar_tower'
 
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 

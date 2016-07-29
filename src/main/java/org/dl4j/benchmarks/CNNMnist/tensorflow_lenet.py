@@ -17,20 +17,31 @@ from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.examples.tutorials.mnist import mnist
 from six.moves import urllib, xrange
 import os
+import re
+import numpy as np
+
+import pdb
 
 NUM_CLASSES = 10
 HEIGHT = 28
 WIDTH = 28
 CHANNELS = 1
 IMAGE_PIXELS = mnist.IMAGE_PIXELS
-CORE_TYPE = 'GPU'
+CORE_TYPE = 'MULTI'
 DTYPE = tf.float32
-DEVICE = '/cpu:0' #if(CORE_TYPE == 'CPU') else '/gpu:0'
-NUM_GPUS = 0 if(CORE_TYPE == 'CPU') else 1
+DEVICE = '/cpu:0'
+NUM_GPUS = {'CPU': 0, 'GPU': 1, 'MULTI': 4}
 CUDNN = True
 DATA_DIR = os.getcwd() + "src/main/resources/tf_data/"
 DATA_FORMAT = 'NHWC' # number examples, height, width, channels
 ONE_HOT = True
+
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
+MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
+NUM_EPOCHS_PER_DECAY = 350.0
+
+TOWER_NAME = 'lenet_tower'
 
 FLAGS = tf.app.flags.FLAGS
 # max_iteration = (epochs * numExamples)/batchSize (11 * 60000)/66
@@ -42,6 +53,7 @@ tf.app.flags.DEFINE_integer('test_batch_size', 66, 'Test batch size. Must divide
 tf.app.flags.DEFINE_string('train_dir', 'data', 'Directory to put the training data.')
 tf.app.flags.DEFINE_boolean('fake_data', False, 'If true, uses fake data for unit testing.')
 tf.app.flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
+tf.app.flags.DEFINE_float('learning_rate_decay_factor', 0.1, 'Decay factor.')
 tf.app.flags.DEFINE_float('bias_learning_rate', 0.02, 'Initial bias rate.') #
 tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
@@ -84,7 +96,8 @@ def _placeholder_inputs():
 
 
 def _init_weights(shape):
-    weights = tf.get_variable("weights", shape,
+    with tf.device(DEVICE):
+        weights = tf.get_variable("weights", shape,
                               initializer=tf.contrib.layers.xavier_initializer(uniform=True, seed=FLAGS.seed, dtype=DTYPE), dtype=DTYPE)
     weight_decay = tf.mul(tf.nn.l2_loss(weights), FLAGS.l2, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
@@ -164,7 +177,9 @@ def run_training(train_data):
         # Add to the Graph the Ops that calculate and apply gradients.
         train_op = _trainer(loss)
 
-        sess = tf.InteractiveSession(config=tf.ConfigProto(device_count={'GPU': NUM_GPUS}))
+        config = tf.ConfigProto(device_count={'GPU':NUM_GPUS[CORE_TYPE]})
+        config.gpu_options.allow_growth = True
+        sess = tf.InteractiveSession(config=config)
 
         # Run the Op to initialize the variables.
         sess.run(tf.initialize_all_variables())
@@ -188,14 +203,15 @@ def _evaluation_straight(logits, labels):
 
 def _prediction(logits, labels):
     correct_pred = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
-    return tf.reduce_sum(tf.cast(correct_pred, tf.float32))
+    return tf.reduce_sum(tf.cast(correct_pred, tf.float32), 0)
 
 
-def do_eval(sess, logits, images_placeholder, labels_placeholder, data_set):
+def do_eval(sess, logits, images_placeholder, labels_placeholder, data):
     """Runs one evaluation against the full epoch of data.
     """
     correct_count = 0
     num_examples = data_set.num_examples
+
     if(ONE_HOT == False):
         correct_count = 0  # Counts the number of correct predictions.
         for _ in xrange(FLAGS.test_iter):
@@ -215,6 +231,199 @@ def printTime(time_type, time):
     milli = time * 1000
     print(time_type + ' load time: %s min %s sec | %s millisec' %(min, sec, milli))
 
+'''
+Multi-GPUs
+'''
+def tower_loss(data, scope, images_placeholder, labels_placeholder):
+    """Calculate the total loss on a single tower running the CIFAR model.
+    """
+    # Build inference Graph.
+    logits = _inference(images_placeholder)
+
+    # Build the portion of the Graph calculating the losses. Note that we will
+    # assemble the total_loss using a custom function below.
+    _ = _score(logits, labels_placeholder)
+
+    # Assemble all of the losses for the current tower only.
+    losses = tf.get_collection('losses', scope)
+
+    # Calculate the total loss for the current tower.
+    print losses
+    total_loss = tf.add_n(losses, name='total_loss')
+
+    # Compute the moving average of all individual losses and the total loss.
+    loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
+    loss_averages_op = loss_averages.apply(losses + [total_loss])
+
+    # Attach a scalar summary to all individual losses and the total loss; do the
+    # same for the averaged version of the losses.
+    for l in losses + [total_loss]:
+        # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
+        # session. This helps the clarity of presentation on tensorboard.
+        loss_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', l.op.name)
+        # Name each loss as '(raw)' and name the moving average version of the loss
+        # as the original loss name.
+        tf.scalar_summary(loss_name +' (raw)', l)
+        tf.scalar_summary(loss_name, loss_averages.average(l))
+
+    with tf.control_dependencies([loss_averages_op]):
+        total_loss = tf.identity(total_loss)
+    return total_loss
+
+
+def average_gradients(tower_grads):
+    """Calculate the average gradient for each shared variable across all towers.
+    """
+    average_grads = []
+    for grad_and_vars in zip(*tower_grads):
+        # Note that each grad_and_vars looks like the following:
+        #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
+        grads = []
+        for g, _ in grad_and_vars:
+            # Add 0 dimension to the gradients to represent the tower.
+            pdb.set_trace()
+            expanded_g = tf.expand_dims(g, 0)
+
+            # Append on a 'tower' dimension which we will average over below.
+            grads.append(expanded_g)
+
+        # Average over the 'tower' dimension.
+        grad = tf.concat(0, grads)
+        grad = tf.reduce_mean(grad, 0)
+
+        # Keep in mind that the Variables are redundant because they are shared
+        # across towers. So .. we will just return the first tower's pointer to
+        # the Variable.
+        v = grad_and_vars[0][1]
+        grad_and_var = (grad, v)
+        average_grads.append(grad_and_var)
+    return average_grads
+
+
+def run_multi_training(data):
+    """Train for a number of iterations."""
+    with tf.Graph().as_default(), tf.device('/cpu:0'):
+        # Create a variable to count the number of train() calls. This equals the
+        # number of batches processed * FLAGS.num_gpus.
+        images_placeholder, labels_placeholder = _placeholder_inputs()
+
+        global_step = tf.get_variable('global_step', [],
+                                      initializer=tf.constant_initializer(0), trainable=False)
+
+        # Calculate the learning rate schedule.
+        num_batches_per_epoch = (NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / FLAGS.batch_size)
+        decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
+
+        # Decay the learning rate exponentially based on the number of steps.
+        lr = tf.train.exponential_decay(FLAGS.learning_rate_decay_factor, # tech initial learning rate higher than standard
+                                        global_step,
+                                        decay_steps,
+                                        FLAGS.learning_rate_decay_factor,
+                                        staircase=True)
+
+        # Create an optimizer that performs gradient descent.
+        opt = tf.train.GradientDescentOptimizer(lr)
+        #opt = tf.train.MomentumOptimizer(lr, FLAGS.momentum)
+
+        # Calculate the gradients for each model tower.
+        tower_grads = []
+        for i in xrange(NUM_GPUS[CORE_TYPE]):
+            with tf.device('/gpu:%d' % i):
+                with tf.name_scope('%s_%d' % (TOWER_NAME, i)) as scope:
+                    # Calculate the loss for one tower of the CIFAR model. This function
+                    # constructs the entire CIFAR model but shares the variables across
+                    # all towers.
+                    loss = tower_loss(data, scope, images_placeholder, labels_placeholder)
+
+                    # Reuse variables for the next tower.
+                    tf.get_variable_scope().reuse_variables()
+
+                    # Retain the summaries from the final tower.
+                    # summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+
+                    # Calculate the gradients for the batch of data on this CIFAR tower.
+                    grads = opt.compute_gradients(loss)
+
+                    # Keep track of the gradients across all towers.
+                    tower_grads.append(grads)
+
+        # We must calculate the mean of each gradient. Note that this is the
+        # synchronization point across all towers.
+        grads = average_gradients(tower_grads)
+
+        # # Add a summary to track the learning rate.
+        # summaries.append(tf.scalar_summary('learning_rate', lr))
+        #
+        # # Add histograms for gradients.
+        # for grad, var in grads:
+        #     if grad is not None:
+        #         summaries.append(
+        #                 tf.histogram_summary(var.op.name + '/gradients', grad))
+
+        # Apply the gradients to adjust the shared variables.
+        apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+
+        # Add histograms for trainable variables.
+        # for var in tf.trainable_variables():
+        #     summaries.append(tf.histogram_summary(var.op.name, var))
+
+        # Track the moving averages of all trainable variables.
+        variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY, global_step)
+        variables_averages_op = variable_averages.apply(tf.trainable_variables())
+
+        # Group all updates to into a single train op.
+        train_op = tf.group(apply_gradient_op, variables_averages_op)
+
+        # Create a saver.
+        # saver = tf.train.Saver(tf.all_variables())
+
+        # Build the summary operation from the last tower summaries.
+        # summary_op = tf.merge_summary(summaries)
+
+        # Build an initialization operation to run below.
+        init = tf.initialize_all_variables()
+
+        # Start running operations on the Graph. allow_soft_placement must be set to
+        # True to build towers on GPU, as some of the ops do not have GPU
+        # implementations.
+        sess = tf.Session(config=tf.ConfigProto(
+                allow_soft_placement=True,
+                log_device_placement=FLAGS.log_device_placement))
+        sess.run(init)
+
+        # Start the queue runners.
+        tf.train.start_queue_runners(sess=sess)
+
+        # summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, sess.graph)
+
+        train_time = time.time()
+        for _ in xrange(FLAGS.max_iter):
+            feed_dict = _fill_feed_dict(data, images_placeholder, labels_placeholder)
+            _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
+
+            assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+
+            # if step % 10 == 0:
+            #     num_examples_per_step = FLAGS.batch_size * FLAGS.num_gpus
+            #     examples_per_sec = num_examples_per_step / duration
+            #     sec_per_batch = duration / FLAGS.num_gpus
+            #
+            #     format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
+            #                   'sec/batch)')
+            #     print (format_str % (datetime.now(), step, loss_value,
+            #                          examples_per_sec, sec_per_batch))
+
+            # if step % 100 == 0:
+            #     summary_str = sess.run(summary_op)
+            #     summary_writer.add_summary(summary_str, step)
+            #
+            # # Save the model checkpoint periodically.
+            # if step % 1000 == 0 or (step + 1) == FLAGS.max_iter:
+            #     checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
+            #     saver.save(sess, checkpoint_path, global_step=step)
+
+    train_time = time.time() - train_time
+    return sess, train_time, images_placeholder, labels_placeholder
 
 def run():
     total_time = time.time()
@@ -223,10 +432,13 @@ def run():
     data_sets = load_data()
     data_load_time = time.time() - data_load_time
 
-    sess, logits, images_placeholder, labels_placeholder, train_time = run_training(data_sets.train)
+    if CORE_TYPE != 'MULTI':
+        sess, logits, images_placeholder, labels_placeholder, train_time = run_training(data_sets.train)
+    else:
+        sess, train_time, images_placeholder, labels_placeholder = run_multi_training(data_sets.train)
+        logits = _inference(images_placeholder)
 
     test_time = time.time()
-    # TODO eval is failing for gpu?
     do_eval(sess, logits, images_placeholder, labels_placeholder, data_sets.test)
     test_time = time.time() - test_time
     sess.close
