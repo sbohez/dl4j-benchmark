@@ -5,21 +5,26 @@
 require 'torch'
 require 'nn'
 require 'optim'
---require 'src/main/resources/torch-data/dataset-mnist'
-mnist = require 'mnist' -- alternative but was giving bad results
+require 'src/main/resources/torch-data/dataset-mnist'
+--mnist = require 'mnist' -- alternative but was giving bad results
 require 'src/main/java/org/dl4j/benchmarks/Utils/benchmark-util'
 
 total_time = sys.clock()
 torch.manualSeed(42)
-
+torch.setdefaulttensortype('torch.FloatTensor')
 -- epoch tracker
+
+-- Lessons learned:
+--    requires batch and numExamples to be divisable without remainder
+--    harder to debug and research than python
+
 opt = {
     gpu = false,
     usecuDNN = true,
     max_epoch = 11,
-    numExamples = 1000 , -- numExamples
+    numExamples = 60000 , -- numExamples
     numTestExamples = 10000,
-    batchSize = 66,
+    batchSize = 100,
     testBatchSize = 100,
     noutputs = 10,
     channels = 1,
@@ -50,16 +55,18 @@ geometry = {opt.height, opt.width}
 ------------------------------------------------------------
 -- print('Load data')
 data_load_time = sys.clock()
---trainData = mnist.loadTrainSet(opt.numExamples, geometry)
---trainData:normalizeGlobal()
+trainData = mnist.loadTrainSet(opt.numExamples, geometry)
+trainData:normalizeGlobal()
+
+testData = mnist.loadTestSet(opt.numTestExamples, geometry)
+testData:normalizeGlobal()
 --
---testData = mnist.loadTestSet(opt.numTestExamples, geometry)
---testData:normalizeGlobal()
+
+--trainData = mnist.traindataset()
+--testData = mnist.testdataset()
 
 data_load_time = sys.clock() - data_load_time
 
-trainData = mnist.traindataset()
-testData = mnist.testdataset()
 
 
 ------------------------------------------------------------
@@ -74,14 +81,11 @@ model:add(nn.SpatialConvolutionMM(20, 50, 5, 5))
 model:add(nn.Identity())
 model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
 -- stage 3 : standard 2-layer MLP:
---model:add(nn.Reshape(50*5*5))
---model:add(nn.Linear(50*5*5, 500))
 model:add(nn.Reshape(50*4*4))
 model:add(nn.Linear(50*4*4, 500))
 
-model:add(nn.ReLU())
+model:add(nn.ReLU(true))
 model:add(nn.Linear(500, #classes))
-model:add(nn.LogSoftMax())
 --model:add(util.cast(nn.Copy('torch.FloatTensor', torch.type(util.cast(torch.Tensor(), opt.gpu)))), opt.gpu)
 --model:add(util.cast(model, opt.gpu))
 
@@ -108,7 +112,8 @@ end
 --flattens & creates views for optim to process param and gradients
 parameters,gradParameters = model:getParameters()
 
-criterion = opt.gpu and nn.ClassNLLCriterion():cuda() or nn.ClassNLLCriterion()
+--criterion = opt.gpu and nn.ClassNLLCriterion():cuda() or nn.ClassNLLCriterion()
+criterion = opt.gpu and nn.CrossEntropyCriterion():cuda() or nn.CrossEntropyCriterion()
 
 --print(model)
 
@@ -117,61 +122,55 @@ criterion = opt.gpu and nn.ClassNLLCriterion():cuda() or nn.ClassNLLCriterion()
 
 function train(dataset)
     model:training()
-
 --    loops from 1 to full dataset size by batchsize
     for t = 1,opt.numExamples,opt.batchSize do
         -- create mini batch
-        local inputs = opt.gpu and torch.CudaTensor(opt.batchSize,1,28,2) or torch.Tensor(opt.batchSize,1,28,28)
-        local targets = opt.gpu and torch.CudaTensor(opt.batchSize):zero() or torch.zeros(opt.batchSize)
+--        local inputs = opt.gpu and torch.CudaTensor(opt.batchSize,opt.channels,opt.height,opt.width) or torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width)
+----        local inputs = opt.gpu and torch.CudaTensor(opt.batchSize,opt.height,opt.width) or torch.Tensor(opt.batchSize,opt.height,opt.width)
+--        local targets = opt.gpu and torch.CudaTensor(opt.batchSize):zero() or torch.zeros(opt.batchSize)
+        local inputs = torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width)
+        local targets = torch.zeros(opt.batchSize)
         local k = 1
---        for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
---            -- load new sample
+        for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
+            -- load new sample
+            local sample = dataset[i]
+            local input = sample[1]:clone():resize(opt.channels,opt.height,opt.width)
+            local _,target = sample[2]:clone():max(1)
+            target = target:squeeze()
+            inputs[k] = input
+            targets[k] = target
+            k = k + 1
+        end
+--        for i = 1,math.min(t+opt.batchSize-1,dataset.size) do
 --            local sample = dataset[i]
---            local input = sample[1]:clone():resize(opt.channels,opt.height,opt.width)
---            local _,target = sample[2]:clone():max(1)
---            target = target:squeeze()
+--            local input = sample.x:view(opt.channels,opt.height,opt.width)
+--            local target = sample.y+1
 --            inputs[k] = input
 --            targets[k] = target
 --            k = k + 1
 --        end
-        for i = t,math.min(t+opt.batchSize-1,dataset.size) do
-            local sample = dataset[i]
-            local input = sample.x:clone()
-            local target = sample.y+1
-            inputs[k] = input
-            if target <= 0 then
-                target = 1
-            end
-            targets[k] = target
-            k = k + 1
-        end
-
         inputs = opt.gpu and inputs:cuda() or inputs
         -- create closure to evaluate f(X) and df/dX
         local feval = function(x)
             -- just in case:
             collectgarbage()
-
             -- get new parameters
             if x ~= parameters then parameters:copy(x) end
-
             -- reset gradients
             gradParameters:zero()
-
             -- evaluate function for complete mini batch
             local outputs = model:forward(inputs)
-            local loss = criterion:forward(outputs, targets)
 
+
+            local loss = criterion:forward(outputs, targets)
             -- estimate df/dW
             local df_do = criterion:backward(outputs, targets)
             model:backward(inputs, df_do)
 
-            return f, gradParameters
+            return loss, gradParameters
         end
-
         optim.sgd(feval,parameters,optimState)
     end
-
 end
 
 ------------------------------------------------------------
@@ -181,60 +180,59 @@ end
 confusion = optim.ConfusionMatrix(classes)
 
 function test(dataset)
+    print('Eval')
     model:evaluate()
     -- test over given dataset
---    for t = 1,dataset:size(),opt.testBatchSize do
---        -- disp progress
---        xlua.progress(t, dataset:size())
---
---        -- create mini batch
---        local inputs = torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width)
---        local targets = torch.Tensor(opt.testBatchSize)
---        local k = 1
---        for i = t,math.min(t+opt.testBatchSize-1,opt.numTestExamples) do
---            -- load new sample
---            local sample = dataset[i]
---            local input = sample[1]:clone():resize(opt.channels,opt.height,opt.width)
---            local _,target = sample[2]:clone():max(1)
---            target = target:squeeze()
---            inputs[k] = input
---            targets[k] = target
---            k = k + 1
---        end
-    for t=1,dataset.size,opt.batchSize do
+    for t = 1,dataset:size(),opt.testBatchSize do
+        -- disp progress
+        xlua.progress(t, dataset:size())
 
         -- create mini batch
-        local inputs = torch.Tensor(opt.testBatchSize,1,geometry[1],geometry[2])
+        local inputs = torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width)
         local targets = torch.Tensor(opt.testBatchSize)
         local k = 1
-        for i = t,math.min(t+opt.testBatchSize-1,dataset.size) do
+        for i = t,math.min(t+opt.testBatchSize-1,opt.numTestExamples) do
+            -- load new sample
             local sample = dataset[i]
-            local input = sample.x:clone()
-            local target = sample.y+1
-            if target <=0 then
-                target = 1
-            end
+            local input = sample[1]:clone():resize(opt.channels,opt.height,opt.width)
+            local _,target = sample[2]:clone():max(1)
+            target = target:squeeze()
             inputs[k] = input
             targets[k] = target
             k = k + 1
         end
-
+--    for t=1,dataset.size,opt.batchSize do
+--        -- create mini batch
+--        local inputs = torch.Tensor(opt.testBatchSize,1,geometry[1],geometry[2])
+--        local targets = torch.Tensor(opt.testBatchSize)
+--        local k = 1
+--        for i = t,math.min(t+opt.testBatchSize-1,dataset.size) do
+--            local sample = dataset[i]
+--            local input = sample.x:view(opt.channels,opt.height,opt.width)
+--            local target = sample.y+1
+--            if target <=0 then
+--                target = 1
+--            end
+--            inputs[k] = input
+--            targets[k] = target
+--            k = k + 1
+--        end
         -- test samples
         local preds = model:forward(inputs)
-
         -- confusion:
         confusion:batchAdd(preds, targets)
     end
-
     -- print confusion matrix
     confusion:updateValids()
     print(confusion)
     print('Accuracy: ', confusion.totalValid * 100)
     confusion:zero()
+
 end
 
 train_time = sys.clock()
 for _ = 1,opt.max_epoch do
+    print(_)
     train(trainData)
 end
 train_time = sys.clock() - train_time

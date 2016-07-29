@@ -14,7 +14,7 @@ require 'src/main/java/org/dl4j/benchmarks/Utils/benchmark-util'
 
 total_time = sys.clock()
 torch.manualSeed(42)
-
+torch.setdefaulttensortype('torch.FloatTensor')
 --print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name)
 opt = {
     gpu = false,
@@ -94,7 +94,7 @@ model:add(nn.Reshape(opt.ninputs))
 model:add(nn.Linear(opt.ninputs,opt.nhidden))
 model:add(nn.ReLU())
 model:add(nn.Linear(opt.nhidden,opt.noutputs))
-model:add(nn.LogSoftMax())
+--model:add(nn.LogSoftMax())
 --model:add(util.cast(nn.Copy('torch.FloatTensor', torch.type(util.cast(torch.Tensor(), opt.gpu)))), opt.gpu)
 --model:add(util.cast(model, opt.gpu))
 
@@ -115,20 +115,22 @@ end
 
 parameters,gradParameters = model:getParameters()
 
-criterion = opt.gpu and nn.ClassNLLCriterion():cuda() or nn.ClassNLLCriterion()
+--criterion = opt.gpu and nn.ClassNLLCriterion():cuda() or nn.ClassNLLCriterion()
+criterion = opt.gpu and nn.CrossEntropyCriterion():cuda() or nn.CrossEntropyCriterion()
 
 ------------------------------------------------------------
--- print('Train model')
+
 function train(dataset)
 
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
+    print('Train model')
     model:training()
 
     for t=1,dataset.size(),opt.batchSize do
 
         --create a minibatch
 --        local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
-        local inputs = opt.gpu and torch.CudaTensor(opt.batchSize,1,28,2) or torch.Tensor(opt.batchSize,1,28,28)
+        local inputs = opt.gpu and torch.CudaTensor(opt.batchSize,1,28,2) or torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width)
         local targets = opt.gpu and torch.CudaTensor(opt.batchSize):zero() or torch.zeros(opt.batchSize)
         local k = 1
         for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
@@ -180,10 +182,10 @@ function train(dataset)
 
 end
 ------------------------------------------------------------
-print('Evaluate')
 confusion = optim.ConfusionMatrix(classes)
 
 function test(dataset)
+    print('Evaluate')
 --     test over given dataset
     model:evaluate()
 
