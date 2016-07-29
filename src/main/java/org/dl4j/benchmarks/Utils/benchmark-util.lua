@@ -52,9 +52,9 @@ end
 
 
 function util.printTime(time_type, time)
-    local min = time/60000 - time/1000
-    local sec = time/1000 - min
-    local milli = time
+    local min = math.floor(time/60)
+    local sec = time - min
+    local milli = time * 1000
     print(time_type .. ' load time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
 end
 

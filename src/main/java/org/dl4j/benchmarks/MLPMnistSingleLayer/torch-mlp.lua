@@ -20,9 +20,9 @@ opt = {
     gpu = false,
     usecuDNN = false,
     max_epoch = 15,
-    numExamples = 59904, -- after it throws errors in target and doesn't properly load
+    numExamples = 60000, -- after it throws errors in target and doesn't properly load
     numTestExamples = 10000,
-    batchSize = 128,
+    batchSize = 100,
     noutputs = 10,
     channels = 1,
     height = 28,
@@ -119,11 +119,11 @@ parameters,gradParameters = model:getParameters()
 criterion = opt.gpu and nn.CrossEntropyCriterion():cuda() or nn.CrossEntropyCriterion()
 
 ------------------------------------------------------------
-
+--print('Train model')
 function train(dataset)
 
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
-    print('Train model')
+
     model:training()
 
     for t=1,dataset.size(),opt.batchSize do
@@ -182,6 +182,8 @@ function train(dataset)
 
 end
 ------------------------------------------------------------
+--print('Train model')
+
 confusion = optim.ConfusionMatrix(classes)
 
 function test(dataset)
