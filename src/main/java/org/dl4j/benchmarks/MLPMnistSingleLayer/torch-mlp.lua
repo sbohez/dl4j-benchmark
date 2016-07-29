@@ -16,10 +16,6 @@ total_time = sys.clock()
 torch.manualSeed(42)
 
 --print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name)
-<<<<<<< 67491e2b69b9f367731be4722bff5101804d6737
-
-=======
->>>>>>> Tensorflow works single gpu. Draft for multi gpu added and in progress. Torch still needs work
 opt = {
     gpu = false,
     usecuDNN = false,
@@ -43,19 +39,6 @@ opt = {
 }
 
 --opt = lapp[[
-<<<<<<< 67491e2b69b9f367731be4722bff5101804d6737
---   -s,--save                  (default "logs")      subdirectory to save logs
---   -b,--batchSize             (default 128)          batch size
---   -r,--learningRate          (default 1)        learning rate
---   --learningRateDecay        (default 1e-7)      learning rate decay
---   --weightDecay              (default 0.0005)      weightDecay
---   -m,--momentum              (default 0.9)         momentum
---   --epoch_step               (default 25)          epoch step
---   --model                    (default vgg_bn_drop)     model name
---   --max_epoch                (default 300)           maximum number of iterations
---   --backend                  (default nn)            backend
---   --type                     (default cuda)          cuda/float/cl
-=======
 --   --gpu                     (default false)       use gpu vs cpu
 --   --usecuDNN               (default false)
 --   -b,--batchSize             (default 128)          batch size
@@ -77,7 +60,6 @@ opt = {
 --   --nesterov                 (default true)      nesterov
 --   -m,--momentum              (default 0.9)         momentum
 --   -s,--save                  (default "src/main/resources/torch-data/logs")      subdirectory to save logs
->>>>>>> Tensorflow works single gpu. Draft for multi gpu added and in progress. Torch still needs work
 --]]
 
 optimState = {
