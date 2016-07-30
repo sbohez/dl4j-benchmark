@@ -9,44 +9,48 @@ util = {}
 opt = {
     cudnn_fastest = true,
     cudnn_deterministic = false,
-    multiply_input_factor = 1,
+    cudnn_benchmark = true,
+    flatten = true,
+    useNccl = true -- Nvidia's library bindings for parallel table
 }
 
-function util.makeDataParallelTable(model, nGPU)
-    if nGPU > 1 then
-        local gpus = torch.range(1, nGPU):totable()
-        local fastest, benchmark = cudnn.fastest, cudnn.benchmark
+function util.makeDataParallelTable(model, use_cudnn)
+        local dpt
+        if use_cudnn then
+            dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
+            :add(model, gpus)
+            :threads(function()
+                local cudnn = require 'cudnn'
+                cudnn.verbose = false
+                cudnn.fastest, cudnn.benchmark = opt.cudnn_fastest, opt.cudnn_benchmark
+            end)
 
-        local dpt = nn.DataParallelTable(1, true, true)
-        :add(model, gpus)
-        :threads(function()
-            local cudnn = require 'cudnn'
-            cudnn.fastest, cudnn.benchmark = fastest, benchmark
-        end)
+        else
+            dpt = nn.DataParallelTable(1, true, true)
+            :add(model, gpus)
+        end
         dpt.gradInput = nil
-
         model = dpt:cuda()
-    end
     return model
 end
 
-function util.convertCuda(model, use_cudnn)
-    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
-    add(opt.multiply_input_factor ~= 1, nn.MulConstant(opt.multiply_input_factor):cuda())
-    if(use_cudnn) then
+function util.convertCuda(model, use_cudnn, nGPU)
+--    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
+    if use_cudnn then
         require 'cudnn'
         cudnn.convert(model, cudnn)
         cudnn.verbose = false
         cudnn.benchmark = true
         if opt.cudnn_fastest then
-            for i,v in ipairs(net:findModules'cudnn.SpatialConvolution') do v:fastest() end
+            for _,v in ipairs(net:findModules'cudnn.SpatialConvolution') do v:fastest() end
         end
         if opt.cudnn_deterministic then
             model:apply(function(m) if m.setMode then m:setMode(1,1,1) end end)
         end
     end
-    model:add(util.makeDataParallelTable(model))
-
+    if nGPU > 1 then
+        model:add(util.makeDataParallelTable(model, use_cudnn))
+    end
     return model
 end
 
@@ -59,7 +63,7 @@ function util.printTime(time_type, time)
 end
 
 function util.cast(t, gpu)
-    if gpu  then
+    if gpu then
         require 'cunn'
         return t:cuda()
     else
@@ -74,3 +78,21 @@ end
 function util.w_init_xavier_caffe(fan_in, fan_out)
     return math.sqrt(1/fan_in)
 end
+
+function util.updateParams(model)
+    for i=1, #model.modules do
+        method = util.w_init_xavier_caffe
+        local m = model.modules[i]
+        if m.__typename == 'nn.SpatialConvolutionMM' then
+            m:reset(method(m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW))
+            m.bias = nil
+            m.gradBias = nil
+        elseif m.__typename == 'nn.Linear' then
+            m:reset(method(m.weight:size(2), m.weight:size(1)))
+            m.bias:zero()
+        end
+    end
+    return model
+end
+
+function util.applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
