@@ -15,7 +15,7 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 local cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
-cmd:option('-cudnn', false, 'boolean flag to use cudnn for training')
+cmd:option('-cudnn', true, 'boolean flag to use cudnn for training')
 config = cmd:parse(arg)
 
 -- Lessons learned:

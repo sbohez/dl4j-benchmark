@@ -17,6 +17,7 @@ opt = {
 function util.makeDataParallelTable(model, use_cudnn)
         local dpt
         if use_cudnn then
+            print("CUDNN")
             dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
             :add(model, gpus)
             :threads(function()
@@ -57,9 +58,9 @@ end
 
 function util.printTime(time_type, time)
     local min = math.floor(time/60)
-    local sec = time - min
+    local sec = math.floor((time/60 - min) * 100)
     local milli = time * 1000
-    print(time_type .. ' load time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
+    print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
 end
 
 function util.cast(t, gpu)
