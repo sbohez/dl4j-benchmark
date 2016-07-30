@@ -136,8 +136,8 @@ function test(dataset)
     for t = 1,dataset:size(),opt.batchSize do
 
         -- create mini batch
-        local inputs = applycuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
-        local targets = applycuda(opt.gpu, torch.zeros(opt.batchSize))
+        local inputs = util.applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
+        local targets = util.applyCuda(opt.gpu, torch.zeros(opt.batchSize))
         local k = 1
         for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
             -- load new sample

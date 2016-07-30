@@ -27,8 +27,8 @@ opt = {
     gpu = config.gpu,
     usecuDNN = config.cudnn,
     max_epoch = 11,
-    numExamples = 60000 , -- numExamples
-    numTestExamples = 10000,
+    numExamples = 1000 , -- numExamples
+    numTestExamples = 1000,
     batchSize = 100,
     testBatchSize = 100,
     noutputs = 10,
@@ -90,7 +90,7 @@ model = util.updateParams(model)
 if(opt.gpu) then
     require 'cunn'
     model:cuda()
-    model = util.convertCuda(model, opt.usecuDNN)
+    model = util.convertCuda(model, opt.usecuDNN, opt.nGPU)
 end
 
 local parameters,gradParameters = model:getParameters()
@@ -156,8 +156,8 @@ function test(dataset)
         xlua.progress(t, dataset:size())
 
         -- create mini batch
-        local inputs = applycuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
-        local targets = applycuda(opt.gpu, torch.zeros(opt.batchSize))
+        local inputs = util.applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
+        local targets = util.applyCuda(opt.gpu, torch.zeros(opt.batchSize))
         local k = 1
         for i = t,math.min(t+opt.testBatchSize-1,opt.numTestExamples) do
             -- load new sample
