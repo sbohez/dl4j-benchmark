@@ -17,7 +17,6 @@ opt = {
 function util.makeDataParallelTable(model, use_cudnn)
         local dpt
         if use_cudnn then
-            print("CUDNN")
             dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
             :add(model, gpus)
             :threads(function()
@@ -28,7 +27,7 @@ function util.makeDataParallelTable(model, use_cudnn)
 
         else
             dpt = nn.DataParallelTable(1, true, true)
-            :add(model, gpus)
+            :add(model:get(opt.nGPU), gpus)
         end
         dpt.gradInput = nil
         model = dpt:cuda()
@@ -39,7 +38,7 @@ function util.convertCuda(model, use_cudnn, nGPU)
 --    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
     if use_cudnn then
         require 'cudnn'
-        cudnn.convert(model, cudnn)
+        cudnn.convert(model:get(opt.nGPU), cudnn)
         cudnn.verbose = false
         cudnn.benchmark = true
         if opt.cudnn_fastest then

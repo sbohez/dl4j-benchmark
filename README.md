@@ -60,5 +60,13 @@ Running benchmarks on following system setup:
     - 4 Grid GPUs 4GB RAM
     - gcc & g++ v4.9
     - BLAS: OpenBLAS v1.13 or Cublas v7.5
-    - cuDNN v5
+    - cuDNN v5.1.3
   
+  Running benchmarks on following system setup:
+      - Ubuntu 16.0.4
+      - 60GB RAM 
+      - 32 Intel Xeon E5-2670 CPUs
+      - 4 Grid GPUs 4GB RAM
+      - gcc & g++ v5.4.1
+      - BLAS: OpenBLAS v1.13 or Cublas v7.5
+      - cuDNN v5.1.3

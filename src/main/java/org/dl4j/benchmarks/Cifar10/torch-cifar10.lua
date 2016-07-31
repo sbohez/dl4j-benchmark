@@ -199,7 +199,7 @@ do
     model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
     add(opt.multiply_input_factor ~= 1, nn.MulConstant(opt.multiply_input_factor):cuda())
 
-    cudnn.convert(net, cudnn)
+    cudnn.convert(net:get(opt.nGPU), cudnn)
     cudnn.benchmark = true
     if opt.cudnn_fastest then
         for i,v in ipairs(net:findModules'cudnn.SpatialConvolution') do v:fastest() end
