@@ -52,11 +52,32 @@ Help is welcome to improve comparisons. If you know a better way or see a fix th
 
 ## Benchmark System 
 Running benchmarks on following system setup:
-    - Ubuntu 14.0.4
-    - 60GB RAM 
-    - 32 Intel Xeon E5-2670 CPUs
-    - 4 Grid GPUs 4GB RAM
-    - gcc & g++ v4.9
-    - BLAS: OpenBLAS v1.13 or Cublas v7.5
-    - cuDNN v5.1.3
+* Ubuntu 14.0.4
+* 60GB RAM 
+* 32 Intel Xeon E5-2670 CPUs
+* 4 Grid GPUs 4GB RAM
+* gcc & g++ v4.9
+* BLAS: OpenBLAS v1.13 or Cublas v7.5
+* cuDNN v5.1.3
  
+## Prelim Results
+
+Bottom line this data is preliminary, and we are working to confirm performance. TBV is to be verified where we either do not have any trust in the number that we are getting or we haven't finished getting the script to work (e.g. Torch multi-gpus). Consider all numbers hostile with potential to change as we get additional reviews sorted.
+
+**MLP Example**
+
+| Package    | CPU   | GPU   | Multi | Accuracy |
+| ---------- |:-----:| -----:| -----:| --------:| 
+| Dl4j       | 9m53s | 2m26s | 58s   | ~97.4%   | 
+| Caffe      | 4m21s |   14s | 41s   | ~97.4%   |
+| Tensorflow | TBV   |   45s | TBV   | TBV      |
+| Torch      | TBV   |   16s | TBV   | ~94.7%   |
+
+**Lenet Example w/ cuDNN**
+
+| Package    | CPU   | GPU   | Multi | Accuracy |
+| ---------: |------:| -----:| -----:| --------:| 
+| Dl4j       | 27m3s | 2m26s | TBV   | ~99.0%   | 
+| Caffe      | 14m29s|   14s | 1m00s | ~98.8%   |
+| Tensorflow | TBV   | 1m42s | NW    | ~98.5%   |
+| Torch      | TBV   | TBV   | NW    | ~98.1%   |
