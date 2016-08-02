@@ -2,6 +2,12 @@
 --
 -- Reference: https://github.com/torch/demos/blob/master/train-a-digit-classifier/train-on-mnist.lua
 
+-- Lessons learned:
+--    requires batch and numExamples to be divisable without remainder
+--    harder to debug and research than python
+--    More steps to apply gpu vs caffe and dl4j
+
+
 require 'torch'
 require 'nn'
 require 'optim'
@@ -16,12 +22,9 @@ torch.setdefaulttensortype('torch.FloatTensor')
 local cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
 cmd:option('-cudnn', true, 'boolean flag to use cudnn for training')
+cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
 config = cmd:parse(arg)
-
--- Lessons learned:
---    requires batch and numExamples to be divisable without remainder
---    harder to debug and research than python
---    More steps to apply gpu vs caffe and dl4j
+if config.multi then print("Multi-GPU Not Implemented Yet") end
 
 opt = {
     gpu = config.gpu,

@@ -16,7 +16,9 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 local cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
+cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
 config = cmd:parse(arg)
+if config.multi then print("Multi-GPU Not Implemented Yet") end
 
 opt = {
     gpu = config.gpu,
@@ -32,7 +34,7 @@ opt = {
     ninputs = 28*28,
     nhidden = 1000,
     multiply_input_factor = 1,
-    nGPU = 1,
+    nGPU = 0,
     learningRate = 0.006,
     weightDecay = 1e-4,
     nesterov = true,

@@ -7,12 +7,13 @@ layer {
   include {
     phase: TRAIN
   }
+  # normalization of pixels by 256
   transform_param {
     scale: 0.00390625
   }
   data_param {
     source: "src/main/resources/mnist_train_lmdb"
-    batch_size: 128
+    batch_size: 100
     backend: LMDB
   }
 }
@@ -29,7 +30,7 @@ layer {
   }
   data_param {
     source: "src/main/resources/mnist_test_lmdb"
-    batch_size: 128
+    batch_size: 100
     backend: LMDB
   }
 }

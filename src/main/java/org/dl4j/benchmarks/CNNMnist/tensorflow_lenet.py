@@ -11,6 +11,13 @@ TensorFlow install instructions: https://tensorflow.org/get_started/os_setup.htm
 MNIST tutorial: https://tensorflow.org/tutorials/mnist/tf/index.html
 """
 
+# Lessons Learned
+# cpu BiasOp only support NHWC
+# limits to using tf.float64 on certain functions - avoid
+# cuDNN required for CNNs on GPU but hard to compile above 4
+# To maintain model in session prevents from setting different test batch size from training like other platform examples on GPU?
+
+
 import tensorflow as tf
 import time
 from tensorflow.examples.tutorials.mnist import input_data
@@ -63,11 +70,6 @@ tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
 
 # TODO install latest github to access inverse | test code
 
-# Tips Learned
-# cpu BiasOp only support NHWC
-# limits to using tf.float64 on certain functions - avoid
-# cuDNN required for CNNs on GPU
-# To maintain model in session prevents from setting different test batch size from training like other platform examples on GPU?
 
 def load_data():
     return input_data.read_data_sets(DATA_DIR) if(ONE_HOT == False) else \
