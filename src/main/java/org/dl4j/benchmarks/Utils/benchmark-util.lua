@@ -77,7 +77,7 @@ function util.makeDataParallelTable(model, use_cudnn)
 end
 
 function util.convertCuda(model, use_cudnn, nGPU)
-    model = applyCuda(true, model)
+    model = util.applyCuda(true, model)
     --    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
     if use_cudnn then
         require 'cudnn'

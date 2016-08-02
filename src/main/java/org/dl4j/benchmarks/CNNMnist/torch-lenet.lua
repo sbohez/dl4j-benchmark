@@ -48,6 +48,8 @@ opt = {
     dampening = 0
 }
 
+if opt.multi then opt.nGPU = 4 end
+
 if opt.gpu then print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name) end
 
 optimState = {

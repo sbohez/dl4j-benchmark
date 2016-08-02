@@ -32,13 +32,15 @@ opt = {
     ninputs = 28*28,
     nhidden = 1000,
     multiply_input_factor = 1,
-    nGPU = 0,
+    nGPU = 1,
     learningRate = 0.006,
     weightDecay = 1e-4,
     nesterov = true,
     momentum =  0.9,
     dampening = 0,
 }
+
+if opt.multi then opt.nGPU = 4 end
 
 if opt.gpu then
     require 'cutorch'
@@ -74,7 +76,7 @@ model:add(nn.Linear(opt.nhidden,opt.noutputs))
 model = util.updateParams(model)
 
 
-if(opt.gpu) then model = util.convertCuda(model, opt.usecuDNN, opt.nGPU) end
+if(opt.gpu) then model = util.convertCuda(model, false, opt.nGPU) end
 
 local parameters,gradParameters = model:getParameters()
 criterion = util.applyCuda(opt.gpu, nn.CrossEntropyCriterion())

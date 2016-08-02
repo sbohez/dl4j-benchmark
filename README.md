@@ -1,6 +1,6 @@
 # Dl4j-Benchmarks
 
-Repository to track Dl4j benchmarks in relation to well known frameworks on cpu and gpu.   
+Repository to track Dl4j benchmarks in relation to well known frameworks on cpu and gpu. In order to run all examples in this repo, you need to configure a system for all of the platforms. Each platform differs in requirements and be especially aware of software versions that are not supported.   
 
 #### Examples
     - MLP: using same model structure used for all frameworks
@@ -42,6 +42,7 @@ If multiple GPUs, control how many used by adding 'export CUDA_VISIBLE_DEVICES='
 ## TODO
 Help is welcome to improve comparisons. If you know a better way or see a fix that is needed, please submit a pull request. Top of mind next steps that help would be appreciated:
 
+    - Confirm configurations for all frameworks (seeking outside reviews - esp. on Tensorflow MLP)
     - Setup multi-gpu comparison on all frameworks
     - Compare LSTMs, Autoencoders, RBMs where applicable
     - Add additional framworks MXNet, Theano, Nervana
@@ -57,8 +58,8 @@ Running benchmarks on following system setup:
     - gcc & g++ v4.9
     - BLAS: OpenBLAS v1.13 or Cublas v7.5
     - cuDNN v5.1.3
-  
-Running benchmarks on following system setup:
+ 
+In progress setting up an alternative system for comparison but there are still configuration issues preventing full testing:
   - Ubuntu 16.0.4
   - 60GB RAM 
   - 32 Intel Xeon E5-2670 CPUs

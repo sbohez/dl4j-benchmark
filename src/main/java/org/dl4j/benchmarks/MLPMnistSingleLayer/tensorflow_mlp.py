@@ -17,7 +17,7 @@ import sys
 from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 import Utils.benchmark_util as util
-import argparse
+
 
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
@@ -71,12 +71,9 @@ def run(core_type):
 
         # Define loss and optimizer
         cross_entropy = -tf.reduce_sum(y_*tf.log(y)) # softmax & cross entropy
-
         train_op = util._setup_optimizer(cross_entropy, FLAGS.learning_rate, FLAGS.momentum)
 
         # Train
-        # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.01)
-        # with tf.Session(config=tf.ConfigProto(log_device_placement=True, gpu_options=gpu_options)) as sess:
         config = tf.ConfigProto(device_count={'GPU': num_gpus})
         sess = tf.InteractiveSession(config=config)
         sess.run(tf.initialize_all_variables())
@@ -103,10 +100,5 @@ def run(core_type):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
-    parser.add_argument('-core_type', action="Use CPU, GPU or MULTI for mulitple gpus", default="CPU")
-
-    args = parser.parse_args()
-    run(args.core_type)
+    run(sys.argv[1])
 

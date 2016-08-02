@@ -68,7 +68,7 @@ def _inference(images, use_cudnn):
     with tf.variable_scope('cnn1') as scope:
         images = tf.reshape(images, [FLAGS.batch_size, HEIGHT, WIDTH,  CHANNELS])
         depth1 = 20
-        kernel = util._init_weights([5, 5, CHANNELS, depth1])
+        kernel = util._init_weights([5, 5, CHANNELS, depth1], FLAGS.seed, FLAGS.batch_size)
         conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], "VALID", data_format= util.DATA_FORMAT,
                             use_cudnn_on_gpu=use_cudnn) #VALID no padding
         biases = tf.Variable(tf.zeros([depth1], dtype=util.DTYPE), name='biases')
@@ -77,7 +77,7 @@ def _inference(images, use_cudnn):
                            data_format=util.DATA_FORMAT, name='maxpool1')
     with tf.variable_scope('cnn2') as scope:
         depth2 = 50
-        kernel = util._init_weights([5, 5, depth1, depth2])
+        kernel = util._init_weights([5, 5, depth1, depth2], FLAGS.seed, FLAGS.batch_size)
         conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], "VALID", data_format=util.DATA_FORMAT,
                             use_cudnn_on_gpu=use_cudnn)
         biases = tf.Variable(tf.zeros([depth2], dtype=util.DTYPE), name='biases')
@@ -87,12 +87,12 @@ def _inference(images, use_cudnn):
     with tf.variable_scope('ffn1') as scope:
         reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
         dim = reshape.get_shape()[1].value
-        weights = util._init_weights([dim, FLAGS.ffn1])
+        weights = util._init_weights([dim, FLAGS.ffn1], FLAGS.seed, FLAGS.batch_size)
         biases = tf.Variable(tf.zeros([FLAGS.ffn1], dtype=util.DTYPE), name='biases')
         hidden1 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
 
     with tf.variable_scope('softmax_linear') as scope:
-        weights = util._init_weights([FLAGS.ffn1, NUM_CLASSES])
+        weights = util._init_weights([FLAGS.ffn1, NUM_CLASSES], FLAGS.seed, FLAGS.batch_size)
         biases = tf.Variable(tf.zeros([NUM_CLASSES], dtype=util.DTYPE), name='biases')
         logits = tf.nn.softmax(tf.add(tf.matmul(hidden1, weights), biases, name=scope.name))
     return logits
@@ -311,9 +311,4 @@ def run(core_type):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
-    parser.add_argument('-core_type', action="Use CPU, GPU or MULTI for mulitple gpus", default="CPU")
-
-    args = parser.parse_args()
-    run(args.core_type)
+    run(sys.argv[1])
