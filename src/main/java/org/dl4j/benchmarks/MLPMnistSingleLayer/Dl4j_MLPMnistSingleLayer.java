@@ -11,20 +11,14 @@ import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.deeplearning4j.parallelism.ParallelWrapper;
 import org.dl4j.benchmarks.Utils.BenchmarkUtil;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
-import org.nd4j.jita.conf.CudaEnvironment;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -33,7 +27,7 @@ public class Dl4j_MLPMnistSingleLayer{
     private static Logger log = LoggerFactory.getLogger(Dl4j_MLPMnistSingleLayer.class);
 
     // values to pass in from command line when compiled, esp running remotely
-    @Option(name="--numGPUWorkers",usage="How many workers to use for multiple GPUs.",aliases = "-mT")
+    @Option(name="--numGPUWorkers",usage="How many workers to use for multiple GPUs.",aliases = "-nGW")
     // Pass in 8 for 4 GPUs
     public int numGPUWorkers = 0;
 
@@ -45,7 +39,7 @@ public class Dl4j_MLPMnistSingleLayer{
     protected final int epochs = 15;
     protected final int iterations = 1;
     protected final int seed = 42;
-    protected final int nCores = 32; // TODO use for loading data
+    protected final int nCores = 32; // TODO use for loading data async - there was an issue before
     protected int hiddenNodes = 1000;
     protected double learningRate = 6e-3;
     protected double momentum = 0.9;
@@ -63,15 +57,6 @@ public class Dl4j_MLPMnistSingleLayer{
             System.err.println(e.getMessage());
             parser.printUsage(System.err);
         }
-
-        log.info("Configuration", CudaEnvironment.getInstance().getConfiguration().getClass().toString());
-//            CudaEnvironment.getInstance().getConfiguration()
-//                    .setFirstMemory(AllocationStatus.DEVICE)
-//                    .setExecutionModel(Configuration.ExecutionModel.SEQUENTIAL)
-//                    .setAllocationModel(Configuration.AllocationModel.CACHE_ALL)
-//                    .setMaximumBlockSize(128)
-//                    .enableDebug(false)
-//                    .setVerbose(false);
 
         //Get the DataSetIterators:
         long dataLoadTime = System.currentTimeMillis();

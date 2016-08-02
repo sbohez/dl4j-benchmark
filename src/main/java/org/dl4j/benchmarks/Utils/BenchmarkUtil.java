@@ -1,9 +1,7 @@
 package org.dl4j.benchmarks.Utils;
 
-import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.parallelism.ParallelWrapper;
-import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +33,7 @@ public class BenchmarkUtil {
     }
 
     public static void train(MultiLayerNetwork network, int numGPUWorkers, DataSetIterator data){
-        if(numGPUWorkers > 1) {
-            CudaEnvironment.getInstance().getConfiguration().allowMultiGPU(true).allowCrossDeviceAccess(true);
+        if(numGPUWorkers > 0 ) {
             ParallelWrapper wrapper = multiGPUModel(network, buffer, numGPUWorkers, avgFrequency);
             wrapper.fit(data);
         } else {
