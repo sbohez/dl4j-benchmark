@@ -35,7 +35,7 @@ public class BenchmarkUtil {
     }
 
     public static void train(MultiLayerNetwork network, int numGPUWorkers, DataSetIterator data){
-        if(numGPUWorkers > 0) {
+        if(numGPUWorkers > 1) {
             CudaEnvironment.getInstance().getConfiguration().allowMultiGPU(true).allowCrossDeviceAccess(true);
             ParallelWrapper wrapper = multiGPUModel(network, buffer, numGPUWorkers, avgFrequency);
             wrapper.fit(data);

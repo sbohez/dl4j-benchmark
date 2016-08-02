@@ -3,6 +3,7 @@
 --
 require 'torch'
 require 'nn'
+require 'src/main/resources/torch-data/dataset-mnist'
 
 util = {}
 
@@ -13,6 +14,47 @@ opt = {
     flatten = true,
     useNccl = true -- Nvidia's library bindings for parallel table
 }
+
+function util.loadData()
+    trainData = mnist.loadTrainSet(opt.numExamples, geometry)
+    trainData:normalizeGlobal()
+
+    testData = mnist.loadTestSet(opt.numTestExamples, geometry)
+    testData:normalizeGlobal()
+    return trainData, testData
+
+end
+
+function util.applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
+
+function util.w_init_xavier(fan_in, fan_out)
+    return math.sqrt(2/(fan_in + fan_out))
+end
+
+function util.w_init_xavier_caffe(fan_in, fan_out)
+    return math.sqrt(1/fan_in)
+end
+
+function util.w_init_xavier_dl4j(fan_in, fan_out)
+    return math.sqrt(1/(fan_in + fan_out))
+end
+
+function util.updateParams(model)
+    for i=1, #model.modules do
+        method = util.w_init_xavier_dl4j
+        local m = model.modules[i]
+        if m.__typename == 'nn.SpatialConvolutionMM' then
+            m:reset(method(m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW))
+            m.bias = nil
+            m.gradBias = nil
+        elseif m.__typename == 'nn.Linear' then
+            m:reset(method(m.weight:size(2), m.weight:size(1)))
+            m.bias:zero()
+        end
+    end
+    return model
+end
+
 
 function util.makeDataParallelTable(model, use_cudnn)
         local dpt
@@ -35,7 +77,8 @@ function util.makeDataParallelTable(model, use_cudnn)
 end
 
 function util.convertCuda(model, use_cudnn, nGPU)
---    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
+    model = applyCuda(true, model)
+    --    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
     if use_cudnn then
         require 'cudnn'
         cudnn.convert(model:get(opt.nGPU), cudnn)
@@ -55,6 +98,8 @@ function util.convertCuda(model, use_cudnn, nGPU)
 end
 
 
+
+
 function util.printTime(time_type, time)
     local min = math.floor(time/60)
     local sec = math.floor((time/60 - min) * 100)
@@ -62,37 +107,3 @@ function util.printTime(time_type, time)
     print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
 end
 
-function util.cast(t, gpu)
-    if gpu then
-        require 'cunn'
-        return t:cuda()
-    else
-        return t:float()
-    end
-end
-
-function util.w_init_xavier(fan_in, fan_out)
-    return math.sqrt(2/(fan_in + fan_out))
-end
-
-function util.w_init_xavier_caffe(fan_in, fan_out)
-    return math.sqrt(1/fan_in)
-end
-
-function util.updateParams(model)
-    for i=1, #model.modules do
-        method = util.w_init_xavier_caffe
-        local m = model.modules[i]
-        if m.__typename == 'nn.SpatialConvolutionMM' then
-            m:reset(method(m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW))
-            m.bias = nil
-            m.gradBias = nil
-        elseif m.__typename == 'nn.Linear' then
-            m:reset(method(m.weight:size(2), m.weight:size(1)))
-            m.bias:zero()
-        end
-    end
-    return model
-end
-
-function util.applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end

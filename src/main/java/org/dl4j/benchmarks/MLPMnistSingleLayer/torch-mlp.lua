@@ -6,8 +6,6 @@
 require 'torch'
 require 'nn'
 require 'optim'
-require 'cutorch'
-require 'src/main/resources/torch-data/dataset-mnist'
 require 'src/main/java/org/dl4j/benchmarks/Utils/benchmark-util'
 
 total_time = sys.clock()
@@ -42,7 +40,10 @@ opt = {
     dampening = 0,
 }
 
-if opt.gpu then print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name) end
+if opt.gpu then
+    require 'cutorch'
+    print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name)
+end
 
 optimState = {
     learningRate = opt.learningRate,
@@ -59,11 +60,7 @@ geometry = {opt.height,opt.width}
 -- print('Load data')
 data_load_time = sys.clock()
 
-trainData = mnist.loadTrainSet(opt.numExamples, geometry)
-trainData:normalizeGlobal()
-
-testData = mnist.loadTestSet(opt.numTestExamples, geometry)
-testData:normalizeGlobal()
+trainData, testData = util.loadData()
 
 data_load_time = sys.clock() - data_load_time
 ------------------------------------------------------------
@@ -77,11 +74,7 @@ model:add(nn.Linear(opt.nhidden,opt.noutputs))
 model = util.updateParams(model)
 
 
-if(opt.gpu) then
-    require 'cunn'
-    model:cuda()
-    model = util.convertCuda(model, opt.usecuDNN, opt.nGPU)
-end
+if(opt.gpu) then model = util.convertCuda(model, opt.usecuDNN, opt.nGPU) end
 
 local parameters,gradParameters = model:getParameters()
 criterion = util.applyCuda(opt.gpu, nn.CrossEntropyCriterion())
@@ -155,7 +148,6 @@ function test(dataset)
         local preds = model:forward(inputs)
         confusion:batchAdd(preds, targets)
     end
-
     -- print confusion matrix
     confusion:updateValids()
     print(confusion)

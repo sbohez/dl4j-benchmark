@@ -63,6 +63,8 @@ public class Dl4j_MLPMnistSingleLayer{
             System.err.println(e.getMessage());
             parser.printUsage(System.err);
         }
+
+        log.info("Configuration", CudaEnvironment.getInstance().getConfiguration().getClass().toString());
 //            CudaEnvironment.getInstance().getConfiguration()
 //                    .setFirstMemory(AllocationStatus.DEVICE)
 //                    .setExecutionModel(Configuration.ExecutionModel.SEQUENTIAL)

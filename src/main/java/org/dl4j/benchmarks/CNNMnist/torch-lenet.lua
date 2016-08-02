@@ -64,11 +64,8 @@ geometry = {opt.height, opt.width}
 ------------------------------------------------------------
 -- print('Load data')
 data_load_time = sys.clock()
-trainData = mnist.loadTrainSet(opt.numExamples, geometry)
-trainData:normalizeGlobal()
 
-testData = mnist.loadTestSet(opt.numTestExamples, geometry)
-testData:normalizeGlobal()
+trainData, testData = util.loadData()
 
 data_load_time = sys.clock() - data_load_time
 
@@ -90,11 +87,7 @@ model:add(nn.ReLU(true))
 model:add(nn.Linear(500, #classes))
 model = util.updateParams(model)
 
-if(opt.gpu) then
-    require 'cunn'
-    model:cuda()
-    model = util.convertCuda(model, opt.usecuDNN, opt.nGPU)
-end
+if(opt.gpu) then model = util.convertCuda(model, opt.usecuDNN, opt.nGPU) end
 
 local parameters,gradParameters = model:getParameters()
 criterion = util.applyCuda(opt.gpu, nn.CrossEntropyCriterion())
@@ -105,7 +98,7 @@ criterion = util.applyCuda(opt.gpu, nn.CrossEntropyCriterion())
 function train(dataset)
     model:training()
 --    loops from 1 to full dataset size by batchsize
-    for t = 1,opt.numExamples,opt.batchSize do
+    for t = 1,dataset.size(), opt.batchSize do
         -- create mini batch
 --        local inputs = opt.gpu and torch.CudaTensor(opt.batchSize,opt.channels,opt.height,opt.width) or torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width)
 ----        local inputs = opt.gpu and torch.CudaTensor(opt.batchSize,opt.height,opt.width) or torch.Tensor(opt.batchSize,opt.height,opt.width)
@@ -172,9 +165,7 @@ function test(dataset)
             targets[k] = target
             k = k + 1
         end
-        -- test samples
         local preds = model:forward(inputs)
-        -- confusion:
         confusion:batchAdd(preds, targets)
     end
     -- print confusion matrix
@@ -187,7 +178,6 @@ end
 
 train_time = sys.clock()
 for _ = 1,opt.max_epoch do
-    print(_)
     train(trainData)
 end
 train_time = sys.clock() - train_time

@@ -38,8 +38,17 @@ Main packages included for comparison so far...
     - Run: ./shell_script/torch_train_*.sh
 
 If multiple GPUs, control how many used by adding 'export CUDA_VISIBLE_DEVICES=' to .bashrc or .bash_profile and setting empty for CPU and 0,1,2,3 for GPUs (0 if just one and 0,1 if just two) 
-    
-## Benchmark Setup 
+
+## TODO
+Help is welcome to improve comparisons. If you know a better way or see a fix that is needed, please submit a pull request. Top of mind next steps that help would be appreciated:
+
+    - Setup multi-gpu comparison on all frameworks
+    - Compare LSTMs, Autoencoders, RBMs where applicable
+    - Add additional framworks MXNet, Theano, Nervana
+    - Setup Dl4j AlexNet functionality with multiple GPUs for benchmark
+
+
+## Benchmark System 
 Running benchmarks on following system setup:
     - Ubuntu 14.0.4
     - 60GB RAM 
