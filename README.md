@@ -7,7 +7,7 @@ Repository to track Dl4j benchmarks in relation to well known frameworks on cpu 
 * MLP: using same model structure used for all frameworks
 * Lenet: using same model structure used for all frameworks
 * Cifar10: comparing Dl4j against best structures from each framework 
-*Other: exploring other copmarisons and works in progress
+* Other: exploring and works in progress for other comparisons
 
 
 ## Packages
@@ -16,7 +16,8 @@ Main packages included for comparison so far...
 * Install: http://deeplearning4j.org/quickstart
 * Setup packages: add to pom.xml
 * Set GPU: change in pom file under nd4j-backends (native for cpu and cuda-7.5 for gpu) 
-* Run: mvn clean install && ./shell_script/dl4j_train_*.sh
+* Compile: mvn clean install -P (native or cuda)
+* Run: ./shell_script/dl4j_train_*.sh
 
 **Caffe (vr3)**
 * Install: http://caffe.berkeleyvision.org/installation.html
