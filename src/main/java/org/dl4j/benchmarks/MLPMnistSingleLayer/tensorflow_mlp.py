@@ -100,5 +100,12 @@ def run(core_type):
 
 
 if __name__ == "__main__":
+    # TODO fix
+    # parser = argparse.ArgumentParser()
+    # subparsers = parser.add_subparsers()
+    # parser.add_argument('-core_type', action="Use CPU, GPU or MULTI for mulitple gpus"
+    #
+    # args = parser.parse_args()
+    # run(args.core_type)
     run(sys.argv[1])
 

@@ -10,6 +10,8 @@ import org.dl4j.benchmarks.Utils.BenchmarkUtil;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
+import org.nd4j.linalg.api.buffer.DataBuffer;
+import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +26,8 @@ public class Dl4j_LenetMnist {
     @Option(name="--numGPUWorkers",usage="How many workers to use for multiple GPUs.",aliases = "-mT")
     // Pass in 8 for 4 GPUs
     public int numGPUWorkers = 0;
+    @Option(name="--halfPrecision",usage="Apply half precision for GPUs.",aliases = "-ha")
+    public boolean half = false;
 
     protected final int height = 28;
     protected final int width = 28;
@@ -46,6 +50,9 @@ public class Dl4j_LenetMnist {
             System.err.println(e.getMessage());
             parser.printUsage(System.err);
         }
+
+        if(numGPUWorkers > 0 && half)
+            DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
 
         long dataLoadTime = System.currentTimeMillis();
         DataSetIterator mnistTrain = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345));

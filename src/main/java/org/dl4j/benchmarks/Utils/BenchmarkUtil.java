@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
+//import org.nd4j.jita.conf.CudaEnvironment;
 
 /**
  */
@@ -33,6 +34,12 @@ public class BenchmarkUtil {
     }
 
     public static void train(MultiLayerNetwork network, int numGPUWorkers, DataSetIterator data){
+//        CudaEnvironment.getInstance().getConfiguration();
+// For larger grid
+//                .setMaximumDeviceCacheableLength(1024 * 1024 * 1024L)
+//                .setMaximumDeviceCache(6L * 1024 * 1024 * 1024L)
+//                .setMaximumHostCacheableLength(1024 * 1024 * 1024L)
+//                .setMaximumHostCache(6L * 1024 * 1024 * 1024L);
         if(numGPUWorkers > 0 ) {
             ParallelWrapper wrapper = multiGPUModel(network, buffer, numGPUWorkers, avgFrequency);
             wrapper.fit(data);
