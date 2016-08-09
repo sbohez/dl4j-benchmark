@@ -6,11 +6,8 @@
 require 'torch'
 require 'nn'
 require 'optim'
+require 'logroll'
 require 'src/main/java/org/dl4j/benchmarks/Utils/benchmark-util'
-
-total_time = sys.clock()
-torch.manualSeed(42)
-torch.setdefaulttensortype('torch.FloatTensor')
 
 local cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
@@ -18,12 +15,15 @@ cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
 config = cmd:parse(arg)
 if config.multi then print("Multi-GPU Not Implemented Yet") end
 
-opt = {
+log = logroll.print_logger()
+log.level = logroll.DEBUG
+
+local opt = {
     gpu = config.gpu,
     usecuDNN = false,
-    max_epoch = 1,
-    numExamples = 60000, -- after it throws errors in target and doesn't properly load
-    numTestExamples = 10000,
+    max_epoch = 15,
+    nExamples = 10000, -- after it throws errors in target and doesn't properly load
+    nTestExamples = 10000,
     batchSize = 100,
     noutputs = 10,
     channels = 1,
@@ -38,7 +38,16 @@ opt = {
     nesterov = true,
     momentum =  0.9,
     dampening = 0,
+    threads = 8,
+    logger = log.level == logroll.DEBUG,
+    plot = log.level == logroll.DEBUG,
+
 }
+
+total_time = sys.clock()
+torch.manualSeed(42)
+torch.setnumthreads(opt.threads)
+torch.setdefaulttensortype('torch.FloatTensor')
 
 if opt.multi then opt.nGPU = 4 end
 
@@ -47,7 +56,7 @@ if opt.gpu then
     print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name)
 end
 
-optimState = {
+local optimState = {
     learningRate = opt.learningRate,
     weightDecay = opt.weightDecay,
     nesterov = opt.nesterov,
@@ -55,18 +64,19 @@ optimState = {
     dampening = opt.dampening
 }
 
-classes = {'1','2','3','4','5','6','7','8','9','10'}
-geometry = {opt.height,opt.width}
+local classes = {'1','2','3','4','5','6','7','8','9','10'}
+local geometry = {opt.height,opt.width}
+confusion = optim.ConfusionMatrix(classes)
 
 ------------------------------------------------------------
--- print('Load data')
+log.debug('Load data...')
+
 data_load_time = sys.clock()
-
-trainData, testData = util.loadData()
-
+trainData, testData =  util.loadData(opt.nExamples, opt.nTestExamples, geometry)
 data_load_time = sys.clock() - data_load_time
+
 ------------------------------------------------------------
--- print('Build model')
+log.debug('Build model...')
 
 model = nn.Sequential()
 model:add(nn.Reshape(opt.ninputs))
@@ -75,18 +85,21 @@ model:add(nn.ReLU())
 model:add(nn.Linear(opt.nhidden,opt.noutputs))
 model = util.updateParams(model)
 
-
 if(opt.gpu) then model = util.convertCuda(model, false, opt.nGPU) end
 
 local parameters,gradParameters = model:getParameters()
 criterion = util.applyCuda(opt.gpu, nn.CrossEntropyCriterion())
 
 ------------------------------------------------------------
---print('Train model')
+--Train model
+
 function train(dataset)
+    log.debug('Train model...')
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
     model:training()
     for t=1,dataset.size(),opt.batchSize do
+        -- disp moving progress for data load
+        if opt.logger then xlua.progress(t, dataset:size()) end
         --create a minibatch
         local inputs = util.applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
         local targets = util.applyCuda(opt.gpu, torch.zeros(opt.batchSize))
@@ -119,19 +132,27 @@ function train(dataset)
         end
         optim.sgd(feval,parameters,optimState)
     end
+    confusion:updateValids()
+    trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100 }
+    -- plot errors
+    if opt.plot then
+        trainLogger:style{['% mean class accuracy (train set)'] = '-'}
+        trainLogger:plot()
+    end
+    confusion:zero()
+    if opt.logger then print(confusion) end
 end
-------------------------------------------------------------
---print('Evaluate model')
 
-confusion = optim.ConfusionMatrix(classes)
+------------------------------------------------------------
+--Evaluate model
 
 function test(dataset)
-    print('Evaluate')
+    log.debug('Evaluate model...')
 --     test over given dataset
     model:evaluate()
-
     for t = 1,dataset:size(),opt.batchSize do
-
+        -- disp moving progress for data load
+        if opt.logger then xlua.progress(t, dataset:size()) end
         -- create mini batch
         local inputs = util.applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
         local targets = util.applyCuda(opt.gpu, torch.zeros(opt.batchSize))
@@ -146,20 +167,25 @@ function test(dataset)
             targets[k] = target
             k = k + 1
         end
-
         local preds = model:forward(inputs)
         confusion:batchAdd(preds, targets)
+        -- plot errors
+        if opt.plot then
+            testLogger:style{['% mean class accuracy (test set)'] = '-'}
+            testLogger:plot()
+        end
     end
     -- print confusion matrix
     confusion:updateValids()
-    print(confusion)
+    if opt.logger then print(confusion) end
     print('Accuracy: ', confusion.totalValid * 100)
-    confusion:zero()
 end
 
 -- Run program
 train_time = sys.clock()
-for _ = 1,opt.max_epoch do
+for epoch = 1,opt.max_epoch do
+    log.debug('<trainer> on training set:')
+    log.debug("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
     train(trainData)
 end
 train_time = sys.clock() - train_time

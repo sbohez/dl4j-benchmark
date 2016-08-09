@@ -4,22 +4,28 @@
 require 'torch'
 require 'nn'
 require 'src/main/resources/torch-data/dataset-mnist'
+require 'optim'
 
 util = {}
 
-opt = {
+local opt = {
     cudnn_fastest = true,
     cudnn_deterministic = false,
     cudnn_benchmark = true,
     flatten = true,
-    useNccl = true -- Nvidia's library bindings for parallel table
+    useNccl = true, -- Nvidia's library bindings for parallel table
+    save = "src/main/resources/torch-data/",
 }
 
-function util.loadData()
-    trainData = mnist.loadTrainSet(opt.numExamples, geometry)
+-- log results to files
+trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
+testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
+
+function util.loadData(numExamples, numTestExamples, geometry)
+    trainData = mnist.loadTrainSet(numExamples, geometry)
     trainData:normalizeGlobal()
 
-    testData = mnist.loadTestSet(opt.numTestExamples, geometry)
+    testData = mnist.loadTestSet(numTestExamples, geometry)
     testData:normalizeGlobal()
     return trainData, testData
 
@@ -98,11 +104,13 @@ function util.convertCuda(model, use_cudnn, nGPU)
 end
 
 
-
-
 function util.printTime(time_type, time)
     local min = math.floor(time/60)
-    local sec = math.floor((time/60 - min) * 100)
+    local partialSec = min - time/60
+    local sec = 0
+    if partialSec > 0 then
+        sec = math.floor(partialSec * 60)
+    end
     local milli = time * 1000
     print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
 end

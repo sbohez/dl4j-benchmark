@@ -7,7 +7,7 @@ from six.moves import xrange
 DTYPE = tf.float32
 DEVICE = '/cpu:0'
 NUM_GPUS = {'CPU': 0, 'GPU': 1, 'MULTI': 4}
-DATA_DIR = os.getcwd() + "src/main/resources/tf_data/"
+DATA_DIR = os.getcwd() + "/src/main/resources/tf_data/"
 DATA_FORMAT = 'NHWC' # number examples, height, width, channels
 
 #TODO verify data is normalized

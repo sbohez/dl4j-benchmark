@@ -15,8 +15,8 @@ mnist.path_testset = paths.concat(mnist.path_dataset, 'test_32x32.t7')
 function mnist.download()
     if not paths.filep(mnist.path_trainset) or not paths.filep(mnist.path_testset) then
         local remote = mnist.path_remote
-        local tar = paths.basename(remote)
-        os.execute('wget ' .. remote .. '; ' .. 'tar xvf ' .. tar .. '; rm ' .. tar)
+        local tar = paths.concat(mnist.path_dataset, paths.basename(remote))
+        os.execute('wget -cO' ..tar .. ' ' .. remote .. '; ' .. 'tar --strip-components=1 -zxvf ' .. tar .. ' -C ' .. mnist.path_dataset .. '; rm ' .. tar .. ';' )
     end
 end
 
