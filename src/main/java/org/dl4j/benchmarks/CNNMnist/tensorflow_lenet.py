@@ -117,7 +117,7 @@ def run_training(train_data, num_gpus, use_cudnn):
         logits = _inference(images_placeholder, use_cudnn)
 
         loss = _setup_loss(logits, labels_placeholder)
-        train_op = util._setup_optimizer(loss, FLAGS.learning_rate, FLAGS.momentum)
+        train_op = util.setup_optimizer(loss, FLAGS.learning_rate, FLAGS.momentum)
 
         config = tf.ConfigProto(device_count={'GPU': num_gpus})
         config.gpu_options.allow_growth = True
@@ -127,7 +127,7 @@ def run_training(train_data, num_gpus, use_cudnn):
         # Start the training loop.
         train_time = time.time()
         for _ in xrange(FLAGS.max_iter):
-            feed_dict = util._fill_feed_dict(train_data, images_placeholder, labels_placeholder, FLAGS.batch_size)
+            feed_dict = util.fill_feed_dict(train_data, images_placeholder, labels_placeholder, FLAGS.batch_size)
             _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
         train_time = time.time() - train_time
         return sess, logits, images_placeholder, labels_placeholder, train_time

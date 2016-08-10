@@ -15,7 +15,8 @@ def load_data(input_data, one_hot):
     return input_data.read_data_sets(DATA_DIR) if(one_hot is False) else \
         input_data.read_data_sets(DATA_DIR, one_hot=True)
 
-def _placeholder_inputs(one_hot, num_pixels, num_classes):
+
+def placeholder_inputs(one_hot, num_pixels, num_classes):
     """Generate placeholder variables to represent the input tensors.
     """
     images_placeholder = tf.placeholder(DTYPE, [None, num_pixels])
@@ -23,7 +24,8 @@ def _placeholder_inputs(one_hot, num_pixels, num_classes):
         tf.placeholder(DTYPE, [None, num_classes])
     return images_placeholder, labels_placeholder
 
-def _fill_feed_dict(data_set, images_pl, labels_pl, batch_size):
+
+def fill_feed_dict(data_set, images_pl, labels_pl, batch_size):
     """Fills the feed_dict for training the given step.
     """
     images_feed, labels_feed = data_set.next_batch(batch_size)
@@ -33,6 +35,7 @@ def _fill_feed_dict(data_set, images_pl, labels_pl, batch_size):
         labels_pl: labels_feed,
     }
     return feed_dict
+
 
 def _init_weights(shape, seed, l2):
     # Xavier weight initialization
@@ -47,12 +50,14 @@ def _init_weights(shape, seed, l2):
     tf.add_to_collection('losses', weight_decay)
     return weights
 
-def _setup_optimizer(loss, learning_rate, momentum):
+
+def setup_optimizer(loss, learning_rate, momentum):
     optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
     global_step = tf.Variable(0, name='global_step', trainable=False)
     return optimizer.minimize(loss, global_step=global_step)
 
-def _evaluation_topk(logits, labels):
+
+def evaluation_topk(logits, labels):
     """Evaluate the quality of the logits at predicting the label.
     """
     labels = tf.to_int32(labels)
@@ -72,15 +77,15 @@ def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot,
     correct_count = 0
     num_examples = data.num_examples
 
-    if(one_hot is False):
+    if one_hot is False:
         correct_count = 0  # Counts the number of correct predictions.
         for _ in xrange(test_iter):
-            feed_dict = _fill_feed_dict(data, images_placeholder, labels_placeholder)
-            correct_count += sess.run(_evaluation_topk(logits, labels_placeholder), feed_dict=feed_dict)
+            feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder)
+            correct_count += sess.run(evaluation_topk(logits, labels_placeholder), feed_dict=feed_dict)
         print("Accuracy: %0.04f" % (correct_count / num_examples))
     else:
         for _ in xrange(test_iter):
-            feed_dict = _fill_feed_dict(data, images_placeholder, labels_placeholder, batch_size)
+            feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder, batch_size)
             correct_count += sess.run(_prediction(logits, labels_placeholder), feed_dict=feed_dict)
         print("Accuracy: ", (correct_count / num_examples)*100) #(accuracy/FLAGS.test_iter))
 
