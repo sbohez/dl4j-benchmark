@@ -16,13 +16,13 @@ config = cmd:parse(arg)
 if config.multi then print("Multi-GPU Not Implemented Yet") end
 
 log = logroll.print_logger()
-log.level = logroll.DEBUG
+log.level = logroll.INFO
 
 local opt = {
     gpu = config.gpu,
     usecuDNN = false,
     max_epoch = 15,
-    nExamples = 10000, -- after it throws errors in target and doesn't properly load
+    nExamples = 60000,
     nTestExamples = 10000,
     batchSize = 100,
     noutputs = 10,
@@ -40,7 +40,7 @@ local opt = {
     dampening = 0,
     threads = 8,
     logger = log.level == logroll.DEBUG,
-    plot = log.level == logroll.DEBUG,
+    plot = false,--log.level == logroll.DEBUG,
 
 }
 

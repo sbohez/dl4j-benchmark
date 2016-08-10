@@ -87,11 +87,11 @@ function util.convertCuda(model, use_cudnn, nGPU)
     --    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
     if use_cudnn then
         require 'cudnn'
-        cudnn.convert(model:get(opt.nGPU), cudnn)
+        cudnn.convert(model:get(nGPU), cudnn)
         cudnn.verbose = false
         cudnn.benchmark = true
         if opt.cudnn_fastest then
-            for _,v in ipairs(net:findModules'cudnn.SpatialConvolution') do v:fastest() end
+            for _,v in ipairs(model:findModules'cudnn.SpatialConvolution') do v:fastest() end
         end
         if opt.cudnn_deterministic then
             model:apply(function(m) if m.setMode then m:setMode(1,1,1) end end)

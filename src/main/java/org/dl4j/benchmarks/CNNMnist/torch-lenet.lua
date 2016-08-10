@@ -7,7 +7,6 @@
 --    harder to debug and research than python
 --    More steps to apply gpu vs caffe and dl4j
 
-
 require 'torch'
 require 'nn'
 require 'optim'
@@ -29,8 +28,8 @@ if config.multi then print("Multi-GPU Not Implemented Yet") end
 local opt = {
     gpu = config.gpu,
     usecuDNN = config.cudnn,
-    max_epoch = 11,
-    nExamples = 60000 , -- numExamples
+    max_epoch = 15,
+    nExamples = 60000 ,
     nTestExamples = 10000,
     batchSize = 100,
     testBatchSize = 100,
@@ -42,13 +41,13 @@ local opt = {
     coefL2 = 5e-4,
     nGPU = 1,
     learningRate = 1e-2,
-    weightDecay = opt.coefL2,
+    weightDecay = 5e-4,
     nesterov = true,
     momentum =  0.9,
     dampening = 0,
     threads = 8,
     logger = log.level == logroll.DEBUG,
-    plot = log.level == logroll.DEBUG,
+    plot = false,
 
 }
 
@@ -160,13 +159,13 @@ function test(dataset)
     log.debug('Evaluate model...')
     model:evaluate()
     for t = 1,dataset:size(),opt.testBatchSize do
-        -- disp moving progress for data load
-        if opt.logger then xlua.progress(t, dataset:size()) end
         -- create mini batch
         local inputs = util.applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
         local targets = util.applyCuda(opt.gpu, torch.zeros(opt.batchSize))
         local k = 1
-        for i = t,math.min(t+opt.testBatchSize-1,opt.numTestExamples) do
+        for i = t,math.min(t+opt.testBatchSize-1,opt.nTestExamples) do
+            -- disp moving progress for data load
+            if opt.logger then xlua.progress(t, dataset:size()) end
             -- load new sample
             local sample = dataset[i]
             local input = sample[1]:clone():resize(opt.channels,opt.height,opt.width)
