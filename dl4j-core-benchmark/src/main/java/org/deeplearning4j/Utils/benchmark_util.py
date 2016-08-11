@@ -52,6 +52,7 @@ def init_weights(shape, seed, l2):
 
 
 def setup_optimizer(loss, learning_rate, momentum):
+    tf.scalar_summary(loss.op.name, loss)
     optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
     global_step = tf.Variable(0, name='global_step', trainable=False)
     return optimizer.minimize(loss, global_step=global_step)
@@ -65,29 +66,31 @@ def evaluation_topk(logits, labels):
     return tf.reduce_sum(tf.cast(correct, tf.int32))
 
 
-def _prediction(logits, labels):
+def prediction(logits, labels):
     correct_pred = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
     return tf.reduce_sum(tf.cast(correct_pred, tf.float32), 0)
 
 
 # TODO params are ugly - need to condense in container or turn into class
-def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot, test_iter, batch_size):
+def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot, test_iter, batch_size, summary_op, summary_writer):
     """Runs one evaluation against the full epoch of data.
     """
     correct_count = 0
     num_examples = data.num_examples
+    for iter in xrange(test_iter):
 
-    if one_hot is False:
-        correct_count = 0  # Counts the number of correct predictions.
-        for _ in xrange(test_iter):
+        if one_hot is False:
             feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder)
             correct_count += sess.run(evaluation_topk(logits, labels_placeholder), feed_dict=feed_dict)
-        print("Accuracy: %0.04f" % (correct_count / num_examples))
-    else:
-        for _ in xrange(test_iter):
+        else:
             feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder, batch_size)
-            correct_count += sess.run(_prediction(logits, labels_placeholder), feed_dict=feed_dict)
-        print("Accuracy: ", (correct_count / num_examples)*100) #(accuracy/FLAGS.test_iter))
+            correct_count += sess.run(prediction(logits, labels_placeholder), feed_dict=feed_dict)
+        if DEBUG:
+            if iter % 10 == 0:
+                print('Iter %d: loss = %.2f (%.3f sec)' % (iter, (correct_count/iter), 0.0))
+                summary_str = sess.run(summary_op, feed_dict=feed_dict)
+                summary_writer.add_summary(summary_str, iter)
+                summary_writer.flush()
 
 
 def printTime(time_type, time):
