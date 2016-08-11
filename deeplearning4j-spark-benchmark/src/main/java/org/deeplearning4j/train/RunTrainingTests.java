@@ -6,7 +6,9 @@ import com.beust.jcommander.ParameterException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.SequenceFileOutputFormat;
@@ -256,25 +258,24 @@ public class RunTrainingTests {
                     trainData.cache();
                     break;
                 case StringPath:
-                    throw new UnsupportedOperationException("StringPaths not supported in 0.4.0");
-//                    log.info("Generating/exporting data at directory: {}", dataDir);
-//                    JavaRDD<DataSet> data2 = intRDD.map(new GenerateDataFunction(sparkTest));
-//                    data2.foreachPartition(new DataSetExportFunction(new URI(dataDir)));
-//
-//                    FileSystem hdfs = FileSystem.get(URI.create(tempPath), config);
-//
-//                    RemoteIterator<LocatedFileStatus> fileIter = hdfs.listFiles(new org.apache.hadoop.fs.Path(dataDir), false);
-//
-//                    List<String> paths = new ArrayList<>();
-//                    while(fileIter.hasNext()){
-//                        String path = fileIter.next().getPath().toString();
-//                        paths.add(path);
-//                    }
-//
-//                    stringPaths = sc.parallelize(paths);
-//                    stringPaths.cache();
-//
-//                    break;
+                    log.info("Generating/exporting data at directory: {}", dataDir);
+                    JavaRDD<DataSet> data2 = intRDD.map(new GenerateDataFunction(sparkTest));
+                    data2.foreachPartition(new DataSetExportFunction(new URI(dataDir)));
+
+                    FileSystem hdfs = FileSystem.get(URI.create(tempPath), config);
+
+                    RemoteIterator<LocatedFileStatus> fileIter = hdfs.listFiles(new org.apache.hadoop.fs.Path(dataDir), false);
+
+                    List<String> paths = new ArrayList<>();
+                    while(fileIter.hasNext()){
+                        String path = fileIter.next().getPath().toString();
+                        paths.add(path);
+                    }
+
+                    stringPaths = sc.parallelize(paths);
+                    stringPaths.cache();
+
+                    break;
                 case CSV:
                     log.info("Generating/exporting CSV test data at directory: {}", dataDir);
                     //Generate some CSV data. Dimensions:
@@ -336,9 +337,8 @@ public class RunTrainingTests {
                     net.fit(trainData);
                     break;
                 case StringPath:
-                    throw new UnsupportedOperationException("StringPaths not supported in 0.4.0");
-//                    net.fitPaths(stringPaths);
-//                    break;
+                    net.fitPaths(stringPaths);
+                    break;
                 case CSV:
                     JavaRDD<String> rawLines = sc.textFile(dataDir, sc.defaultParallelism());
                     JavaRDD<List<Writable>> writables = rawLines.map(new StringToWritablesFunction(new CSVRecordReader(0,",")));
