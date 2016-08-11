@@ -200,5 +200,3 @@ util.printTime('Data load', data_load_time)
 util.printTime('Train', train_time)
 util.printTime('Test', test_time)
 util.printTime('Total', total_time)
-
-

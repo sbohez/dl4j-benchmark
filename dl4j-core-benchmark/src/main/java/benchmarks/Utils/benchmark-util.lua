@@ -114,4 +114,3 @@ function util.printTime(time_type, time)
     local milli = time * 1000
     print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
 end
-

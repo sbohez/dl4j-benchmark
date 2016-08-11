@@ -120,4 +120,3 @@ public class Dl4j_MLPMnistSingleLayer{
         new Dl4j_MLPMnistSingleLayer().run(args);
     }
 }
-

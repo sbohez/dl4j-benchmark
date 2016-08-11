@@ -5,8 +5,8 @@
         <maven>3.0.5</maven>
     </prerequisites>
     <modules>
-        <module>deeplearning4j-benchmark</module>
-        <module>deeplearning4j-spark-benchmark</module>
+        <module>dl4j-core-benchmark</module>
+        <module>dl4j-spark-benchmark</module>
     </modules>
 
     <groupId>org.dl4j.benchmarks</groupId>
@@ -100,13 +100,6 @@
             <groupId>org.nd4j</groupId>
             <artifactId>${nd4j.backend}</artifactId>
         </dependency>
-        <!--kohsuke-->
-        <dependency>
-            <groupId>args4j</groupId>
-            <artifactId>args4j</artifactId>
-            <version>2.32</version>
-        </dependency>
-
     </dependencies>
 
     <build>

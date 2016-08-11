@@ -1,8 +1,8 @@
 # Dl4j-Benchmarks
 
-Repository to track Dl4j benchmarks in relation to well known frameworks on cpu and gpu. In order to run all examples in this repo, you need to configure a system for all of the platforms. Each platform differs in requirements and be especially aware of software versions that are not supported.   
+Repository to track Dl4j benchmarks in relation to well known frameworks on cpu and gpu and for dl4j on spark.
 
-#### Examples
+#### Core Benchmarks
 
 * MLP: using same model structure used for all frameworks
 * Lenet: using same model structure used for all frameworks
@@ -15,7 +15,8 @@ The deeplearning4j-spark-benchmark package contains a number of synthetic benchm
 
 For more details, see the readme [here - TODO]
 
-## Packages
+
+## Core Packages Comparison
 Main packages included for comparison so far...
 **Dl4j (v0.4.1)**
 * Install: http://deeplearning4j.org/quickstart
@@ -46,16 +47,7 @@ Main packages included for comparison so far...
 
 If multiple GPUs, control how many used by adding 'export CUDA_VISIBLE_DEVICES=' to .bashrc or .bash_profile and setting empty for CPU and 0,1,2,3 for GPUs (0 if just one and 0,1 if just two) 
 
-## *TODO*
-Help is welcome to improve comparisons. If you know a better way or see a fix that is needed, please submit a pull request. Top of mind next steps that help would be appreciated:
-
-    - Confirm configurations for all frameworks (seeking outside reviews - esp. on Tensorflow MLP)
-    - Setup multi-gpu comparison on all frameworks
-    - Compare LSTMs, Autoencoders, RBMs where applicable
-    - Setup Dl4j AlexNet functionality with multiple GPUs for benchmark
-
-
-## Benchmark System 
+#### Benchmark System
 Running benchmarks on following system setup:
 * Ubuntu 14.0.4
 * 60GB RAM 
@@ -64,8 +56,10 @@ Running benchmarks on following system setup:
 * gcc & g++ v4.9
 * BLAS: OpenBLAS v1.13 or Cublas v7.5
 * cuDNN v5.1.3
- 
-## Prelim Results
+
+In order to run all examples in core, you need to configure a system for all of the platforms. Each platform differs in requirements and be especially aware of software versions that are not supported.
+
+#### Core Prelim Results
 
 Bottom line this data is preliminary, and we are working to confirm performance. TBV is to be verified where we either do not have any trust in the number that we are getting or we haven't finished getting the script to work (e.g. Torch multi-gpus). Consider all numbers hostile with potential to change as we get additional reviews sorted.
 
@@ -86,3 +80,12 @@ Bottom line this data is preliminary, and we are working to confirm performance.
 | Caffe      | 14m29s|   14s | 1m00s | ~98.8%   |
 | Tensorflow | TBV   | 1m42s | NW    | ~98.5%   |
 | Torch      | 14m24s| 4m52s | NW    | ~98.1%   |
+
+
+## *TODO*
+Help is welcome to improve comparisons. If you know a better way or see a fix that is needed, please submit a pull request. Top of mind next steps that help would be appreciated:
+
+    - Confirm configurations for all frameworks (seeking outside reviews - esp. on Tensorflow MLP)
+    - Setup multi-gpu comparison on all frameworks
+    - Compare LSTMs, Autoencoders, RBMs where applicable
+    - Setup Dl4j AlexNet functionality with multiple GPUs for benchmark

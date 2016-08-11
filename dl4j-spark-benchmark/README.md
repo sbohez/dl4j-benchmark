@@ -3,7 +3,7 @@
 ### Deeplearning4j Spark Benchmarks
 
 The Spark network training tests in this module are based on synthetic data,
-and are fully parameterized with respect to configuration options such as 
+and are fully parameterized with respect to configuration options such as
 network and data sizes, etc.
 
 Can be run either on Spark local or via spark-submit, depending on the launch configuration

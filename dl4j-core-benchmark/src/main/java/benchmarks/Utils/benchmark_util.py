@@ -95,4 +95,3 @@ def printTime(time_type, time):
     sec = int(round(time - min*60))
     milli = time * 1000
     print(time_type + ' load time: %s min %s sec | %s millisec' %(min, sec, milli))
-
