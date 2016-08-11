@@ -3,6 +3,7 @@
 import os
 import tensorflow as tf
 from six.moves import xrange
+import logging
 
 DTYPE = tf.float32
 DEVICE = '/cpu:0'
@@ -10,7 +11,23 @@ NUM_GPUS = {'CPU': 0, 'GPU': 1, 'MULTI': 4}
 DATA_DIR = os.getcwd() + "/-core-benchmark/src/main/resources/tf_data/"
 DATA_FORMAT = 'NHWC' # number examples, height, width, channels
 
-#TODO verify data is normalized
+# create logger
+LOGGER = logging.getLogger('simple_example')
+LOGGER.setLevel(logging.INFO)
+
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# add formatter to ch
+ch.setFormatter(formatter)
+
+# add ch to logger
+LOGGER.addHandler(ch)
+
 def load_data(input_data, one_hot):
     return input_data.read_data_sets(DATA_DIR) if(one_hot is False) else \
         input_data.read_data_sets(DATA_DIR, one_hot=True)
@@ -72,25 +89,21 @@ def prediction(logits, labels):
 
 
 # TODO params are ugly - need to condense in container or turn into class
-def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot, test_iter, batch_size, summary_op, summary_writer):
+def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot, test_iter, batch_size):
     """Runs one evaluation against the full epoch of data.
     """
+    LOGGER.debug("Evaluate Model")
     correct_count = 0
     num_examples = data.num_examples
     for iter in xrange(test_iter):
-
         if one_hot is False:
             feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder)
             correct_count += sess.run(evaluation_topk(logits, labels_placeholder), feed_dict=feed_dict)
         else:
             feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder, batch_size)
             correct_count += sess.run(prediction(logits, labels_placeholder), feed_dict=feed_dict)
-        if DEBUG:
-            if iter % 10 == 0:
-                print('Iter %d: loss = %.2f (%.3f sec)' % (iter, (correct_count/iter), 0.0))
-                summary_str = sess.run(summary_op, feed_dict=feed_dict)
-                summary_writer.add_summary(summary_str, iter)
-                summary_writer.flush()
+        LOGGER.debug("Eval", iter)
+    print("Accuracy: %d" % (correct_count / num_examples) * 100)
 
 
 def printTime(time_type, time):

@@ -31,6 +31,7 @@ from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 import Utils.benchmark_util as util
 
+
 NUM_CLASSES = 10
 HEIGHT = 28
 WIDTH = 28
@@ -65,6 +66,7 @@ tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
 def _inference(images, use_cudnn):
     """Build the MNIST model up to where it may be used for inference.
     """
+    util.LOGGER.debug("Build Model")
     with tf.variable_scope('cnn1') as scope:
         images = tf.reshape(images, [FLAGS.batch_size, HEIGHT, WIDTH,  CHANNELS])
         depth1 = 20
@@ -110,10 +112,10 @@ def _setup_loss(logits, labels):
 
 def run_training(train_data, num_gpus, use_cudnn):
     """Train for a number of steps."""
-
     # Tell TensorFlow that the model will be built into the default Graph.
     with tf.Graph().as_default():
-        images_placeholder, labels_placeholder = util._placeholder_inputs(ONE_HOT, IMAGE_PIXELS, NUM_CLASSES)
+        util.LOGGER.debug("Load Data")
+        images_placeholder, labels_placeholder = util.placeholder_inputs(ONE_HOT, IMAGE_PIXELS, NUM_CLASSES)
         logits = _inference(images_placeholder, use_cudnn)
 
         loss = _setup_loss(logits, labels_placeholder)
@@ -126,9 +128,12 @@ def run_training(train_data, num_gpus, use_cudnn):
 
         # Start the training loop.
         train_time = time.time()
-        for _ in xrange(FLAGS.max_iter):
+        util.LOGGER.debug("Train Model")
+        for iter in xrange(FLAGS.max_iter):
             feed_dict = util.fill_feed_dict(train_data, images_placeholder, labels_placeholder, FLAGS.batch_size)
             _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
+            # Write the summaries and print an overview fairly often.
+            if iter % 100 == 0: util.LOGGER.debug('Iter %d: loss = %.2f (%.3f sec)' % (iter, loss_value, 0.0))
         train_time = time.time() - train_time
         return sess, logits, images_placeholder, labels_placeholder, train_time
 
@@ -202,6 +207,7 @@ def average_gradients(tower_grads):
 
 def run_multi_training(data, num_gpus, use_cudnn):
     """Train for a number of iterations."""
+    util.LOGGER.debug("Train Model")
     with tf.Graph().as_default(), tf.device('/cpu:0'):
         # Create a variable to count the number of train() calls. This equals the
         # number of batches processed * FLAGS.num_gpus.
@@ -271,10 +277,11 @@ def run_multi_training(data, num_gpus, use_cudnn):
         tf.train.start_queue_runners(sess=sess)
 
         train_time = time.time()
-        for _ in xrange(FLAGS.max_iter):
+        for iter in xrange(FLAGS.max_iter):
             feed_dict = util.fill_feed_dict(data, images_placeholder, labels_placeholder)
             _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
 
+            if iter % 100 == 0: util.LOGGER.debug('Iter %d: loss = %.2f (%.3f sec)' % (iter, loss_value, 0.0))
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
     train_time = time.time() - train_time
