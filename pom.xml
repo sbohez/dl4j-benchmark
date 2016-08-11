@@ -5,8 +5,8 @@
         <maven>3.0.5</maven>
     </prerequisites>
     <modules>
-        <module>deeplearning4j-spark-benchmark</module>
         <module>deeplearning4j-benchmark</module>
+        <module>deeplearning4j-spark-benchmark</module>
     </modules>
 
     <groupId>org.dl4j.benchmarks</groupId>
@@ -16,7 +16,6 @@
 
     <name>Dl4j-Benchmarks</name>
     <description>Examples of training different data sets</description>
-
 
     <properties>
         <nd4j.version>0.5.1-SNAPSHOT</nd4j.version>
