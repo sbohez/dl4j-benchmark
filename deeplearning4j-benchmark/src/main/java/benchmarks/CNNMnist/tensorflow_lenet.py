@@ -68,7 +68,7 @@ def _inference(images, use_cudnn):
     with tf.variable_scope('cnn1') as scope:
         images = tf.reshape(images, [FLAGS.batch_size, HEIGHT, WIDTH,  CHANNELS])
         depth1 = 20
-        kernel = util._init_weights([5, 5, CHANNELS, depth1], FLAGS.seed, FLAGS.batch_size)
+        kernel = util.init_weights([5, 5, CHANNELS, depth1], FLAGS.seed, FLAGS.batch_size)
         conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], "VALID", data_format= util.DATA_FORMAT,
                             use_cudnn_on_gpu=use_cudnn) #VALID no padding
         biases = tf.Variable(tf.zeros([depth1], dtype=util.DTYPE), name='biases')
@@ -77,7 +77,7 @@ def _inference(images, use_cudnn):
                            data_format=util.DATA_FORMAT, name='maxpool1')
     with tf.variable_scope('cnn2') as scope:
         depth2 = 50
-        kernel = util._init_weights([5, 5, depth1, depth2], FLAGS.seed, FLAGS.batch_size)
+        kernel = util.init_weights([5, 5, depth1, depth2], FLAGS.seed, FLAGS.batch_size)
         conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], "VALID", data_format=util.DATA_FORMAT,
                             use_cudnn_on_gpu=use_cudnn)
         biases = tf.Variable(tf.zeros([depth2], dtype=util.DTYPE), name='biases')
@@ -87,12 +87,12 @@ def _inference(images, use_cudnn):
     with tf.variable_scope('ffn1') as scope:
         reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
         dim = reshape.get_shape()[1].value
-        weights = util._init_weights([dim, FLAGS.ffn1], FLAGS.seed, FLAGS.batch_size)
+        weights = util.init_weights([dim, FLAGS.ffn1], FLAGS.seed, FLAGS.batch_size)
         biases = tf.Variable(tf.zeros([FLAGS.ffn1], dtype=util.DTYPE), name='biases')
         hidden1 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
 
     with tf.variable_scope('softmax_linear') as scope:
-        weights = util._init_weights([FLAGS.ffn1, NUM_CLASSES], FLAGS.seed, FLAGS.batch_size)
+        weights = util.init_weights([FLAGS.ffn1, NUM_CLASSES], FLAGS.seed, FLAGS.batch_size)
         biases = tf.Variable(tf.zeros([NUM_CLASSES], dtype=util.DTYPE), name='biases')
         logits = tf.nn.softmax(tf.add(tf.matmul(hidden1, weights), biases, name=scope.name))
     return logits
@@ -272,7 +272,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
 
         train_time = time.time()
         for _ in xrange(FLAGS.max_iter):
-            feed_dict = util._fill_feed_dict(data, images_placeholder, labels_placeholder)
+            feed_dict = util.fill_feed_dict(data, images_placeholder, labels_placeholder)
             _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
 
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
@@ -281,7 +281,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
     return sess, train_time, images_placeholder, labels_placeholder
 
 
-def run(core_type):
+def run(core_type="CPU"):
     total_time = time.time()
 
     data_load_time = time.time()
