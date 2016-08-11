@@ -1,0 +1,31 @@
+# reduce learning rate after 120 epochs (60000 iters) by factor 0f 10
+# then another factor of 10 after 10 more epochs (5000 iters)
+
+# The train/test net protocol buffer definition
+net: "dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/caffe_cifar10_full_sigmoid_train_test_bn.prototxt"
+# test_iter specifies how many forward passes the test should carry out.
+# In the case of CIFAR10, we have test batch size 100 and 10 test iterations,
+# covering the full 10,000 testing images.
+# epochs = (batchSize x max_iter)/numExamples = [100*60000]/50000
+# max_iter | train = (epochs * numExamples)/batchSize = (120*50000)/100
+# test_iter | test = (epochs * numExamples)/batchSize = (1*10000)/1000
+test_iter: 10
+# Carry out testing every X training iterations.
+test_interval: 60000
+# The base learning rate, momentum and the weight decay of the network.
+base_lr: 0.001
+momentum: 0.9
+#weight_decay: 0.004
+# The learning rate policy
+lr_policy: "step"
+gamma: 1
+stepsize: 5000
+# Display every 200 iterations
+display: 60000
+# The maximum number of iterations
+max_iter: 60000
+# snapshot intermediate results
+snapshot: 60000
+snapshot_prefix: "dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/snapshots/caffe_bn"
+# solver mode: CPU or GPU
+solver_mode: GPU
