@@ -4,11 +4,15 @@
     <prerequisites>
         <maven>3.0.5</maven>
     </prerequisites>
+    <modules>
+        <module>dl4j-spark-benchmark</module>
+        <module>deeplearning4j-benchmark</module>
+    </modules>
 
     <groupId>org.dl4j.benchmarks</groupId>
     <artifactId>Dl4j-Benchmarks</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>Dl4j-Benchmarks</name>
     <description>Examples of training different data sets</description>
