@@ -150,3 +150,4 @@ if __name__ == "__main__":
     # args = parser.parse_args()
     # run(args.core_type)
     run(sys.argv[1])
+
