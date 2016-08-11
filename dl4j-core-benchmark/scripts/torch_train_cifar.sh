@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-time th src/main/java/org/dl4j/benchmarks/Cifar10/torch-cifar10.lua
+time th dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/torch-cifar10.lua
