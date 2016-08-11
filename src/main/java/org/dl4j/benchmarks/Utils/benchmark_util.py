@@ -37,7 +37,7 @@ def fill_feed_dict(data_set, images_pl, labels_pl, batch_size):
     return feed_dict
 
 
-def _init_weights(shape, seed, l2):
+def init_weights(shape, seed, l2):
     # Xavier weight initialization
     # (fan_in, fan_out) = shape
     # low = -1*np.sqrt(1.0/(fan_in + fan_out))
