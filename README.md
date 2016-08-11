@@ -69,17 +69,17 @@ Bottom line this data is preliminary, and we are working to confirm performance.
 | ---------- |:-----:| -----:| -----:| --------:| 
 | Dl4j       | 9m53s | 2m26s | 58s   | ~97.4%   | 
 | Caffe      | 4m21s |   14s | 41s   | ~97.4%   |
-| Tensorflow | TBV   |   45s | TBV   | TBV      |
+| Tensorflow | 1m10s |   45s | TBV   | TBV      |
 | Torch      | 5m14s | 1m11s | TBV   | ~97.9%   |
 
 **Lenet Example w/ cuDNN**
 
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------: |------:| -----:| -----:| --------:| 
-| Dl4j       | 27m3s | 2m26s | TBV   | ~99.0%   | 
-| Caffe      | 14m29s|   14s | 1m00s | ~98.8%   |
-| Tensorflow | TBV   | 1m42s | NW    | ~98.5%   |
-| Torch      | 14m24s| 4m52s | NW    | ~98.1%   |
+| Dl4j       | 27m3s | 2m55s | TBV   | ~99.0%   | 
+| Caffe      | 14m29s|   45s | 1m00s | ~98.8%   |
+| Tensorflow | 5m11s | 1m42s | TBV   | ~98.5%   |
+| Torch      | 14m24s| 4m52s | TBV   | ~98.1%   |
 
 
 ## *TODO*
