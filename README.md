@@ -9,6 +9,11 @@ Repository to track Dl4j benchmarks in relation to well known frameworks on cpu 
 * Cifar10: comparing Dl4j against best structures from each framework 
 * Other: exploring and works in progress for other comparisons
 
+#### Spark Benchmarks
+
+The deeplearning4j-spark-benchmark package contains a number of synthetic benchmarks to test Spark training performance under a variety of situations.
+
+For more details, see the readme [here - TODO]
 
 ## Packages
 Main packages included for comparison so far...
