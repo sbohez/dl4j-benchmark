@@ -5,7 +5,7 @@
         <maven>3.0.5</maven>
     </prerequisites>
     <modules>
-        <module>dl4j-spark-benchmark</module>
+        <module>deeplearning4j-spark-benchmark</module>
         <module>deeplearning4j-benchmark</module>
     </modules>
 
