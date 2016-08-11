@@ -8,7 +8,7 @@ import logging
 DTYPE = tf.float32
 DEVICE = '/cpu:0'
 NUM_GPUS = {'CPU': 0, 'GPU': 1, 'MULTI': 4}
-DATA_DIR = os.getcwd() + "/-core-benchmark/src/main/resources/tf_data/"
+DATA_DIR = os.getcwd() + "/dl4j-core-benchmark/src/main/resources/tf_data/"
 DATA_FORMAT = 'NHWC' # number examples, height, width, channels
 
 # create logger
@@ -103,6 +103,8 @@ def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot,
             feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder, batch_size)
             correct_count += sess.run(prediction(logits, labels_placeholder), feed_dict=feed_dict)
         LOGGER.debug("Eval", iter)
+
+    sess.close
     print("Accuracy: %d" % (correct_count / num_examples) * 100)
 
 

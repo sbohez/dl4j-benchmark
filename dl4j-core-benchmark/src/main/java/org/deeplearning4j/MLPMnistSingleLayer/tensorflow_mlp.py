@@ -81,19 +81,13 @@ def run(core_type="CPU"):
         for iter in xrange(FLAGS.max_iter):
             feed_dict = util.fill_feed_dict(mnist.train, images_placeholder, labels_placeholder, FLAGS.batch_size)
             _, loss_value = sess.run([train_op, cross_entropy], feed_dict=feed_dict)
-            # Write the summaries and print an overview fairly often.
-            if util.DEBUG:
-                if iter % 100 == 0:
-                    # Print status to stdout.
-                    print('Iter %d: loss = %.2f (%.3f sec)' % (iter, loss_value, 0.0))
+            util.LOGGER.debug('Iter %d: loss = %.2f (%.3f sec)' % (iter, loss_value, 0.0))
         train_time = time.time() - train_time
 
     # Test trained model
     test_time = time.time()
     util.do_eval(sess, logits, images_placeholder, labels_placeholder, mnist.test, ONE_HOT, FLAGS.test_iter, FLAGS.batch_size)
     test_time = time.time() - test_time
-    sess.close
-
 
     total_time = time.time() - total_time
     print("****************Example finished********************")

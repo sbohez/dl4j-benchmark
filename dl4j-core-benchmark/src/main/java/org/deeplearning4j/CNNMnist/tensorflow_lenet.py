@@ -307,7 +307,6 @@ def run(core_type="CPU"):
     test_time = time.time()
     util.do_eval(sess, logits, images_placeholder, labels_placeholder, data_sets.test, ONE_HOT, FLAGS.test_iter, FLAGS.batch_size)
     test_time = time.time() - test_time
-    sess.close
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
