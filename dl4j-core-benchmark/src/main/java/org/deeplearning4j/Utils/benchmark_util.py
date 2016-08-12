@@ -15,7 +15,7 @@ DATA_FORMAT = 'NHWC' # number examples, height, width, channels
 LOGGER = logging.getLogger('simple_example')
 LOGGER.setLevel(logging.INFO)
 
-# create console handler and set level to debug
+# create console handler
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
@@ -102,7 +102,7 @@ def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot,
         else:
             feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder, batch_size)
             correct_count += sess.run(prediction(logits, labels_placeholder), feed_dict=feed_dict)
-        LOGGER.debug("Eval", iter)
+        if iter % 10 == 0: LOGGER.debug("Eval: ", (correct_count/iter))
 
     sess.close
     print("Accuracy: %.2f" % ((correct_count / num_examples) * 100))

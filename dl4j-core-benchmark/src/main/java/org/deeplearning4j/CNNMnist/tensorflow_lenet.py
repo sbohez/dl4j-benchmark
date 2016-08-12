@@ -281,7 +281,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
             feed_dict = util.fill_feed_dict(data, images_placeholder, labels_placeholder)
             _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
 
-            if iter % 100 == 0: util.LOGGER.debug('Iter %d: loss = %.2f (%.3f sec)' % (iter, loss_value, 0.0))
+            if iter % 100 == 0: util.LOGGER.debug('Iter %d: loss = %.2f' % (iter, loss_value))
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
     train_time = time.time() - train_time

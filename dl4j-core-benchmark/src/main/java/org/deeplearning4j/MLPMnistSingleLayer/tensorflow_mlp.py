@@ -81,7 +81,7 @@ def run(core_type="CPU"):
         for iter in xrange(FLAGS.max_iter):
             feed_dict = util.fill_feed_dict(mnist.train, images_placeholder, labels_placeholder, FLAGS.batch_size)
             _, loss_value = sess.run([train_op, cross_entropy], feed_dict=feed_dict)
-            util.LOGGER.debug('Iter %d: loss = %.2f (%.3f sec)' % (iter, loss_value, 0.0))
+            if iter % 100 == 0:  util.LOGGER.debug('Iter %d: loss = %.2f' % (iter, loss_value))
         train_time = time.time() - train_time
 
     # Test trained model
