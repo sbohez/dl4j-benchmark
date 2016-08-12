@@ -34,6 +34,8 @@ public abstract class BaseSparkTest implements SparkTest {
     protected int workerPrefetchNumBatches;
     protected int averagingFrequency;
     protected DataLoadingMethod dataLoadingMethod;
+    protected CsvCompressionCodec csvCompressionCodec;
+    protected int csvCoalesceSize;
 
 
     protected BaseSparkTest(Builder builder){
@@ -47,6 +49,8 @@ public abstract class BaseSparkTest implements SparkTest {
         this.workerPrefetchNumBatches = builder.workerPrefetchNumBatches;
         this.averagingFrequency = builder.averagingFrequency;
         this.dataLoadingMethod = builder.dataLoadingMethod;
+        this.csvCompressionCodec = builder.csvCompressionCodec;
+        this.csvCoalesceSize = builder.csvCoalesceSize;
     }
 
     @Override
@@ -98,6 +102,8 @@ public abstract class BaseSparkTest implements SparkTest {
         protected int workerPrefetchNumBatches = 2;
         protected int averagingFrequency = 5;
         protected DataLoadingMethod dataLoadingMethod = DataLoadingMethod.SparkBinaryFiles;
+        protected CsvCompressionCodec csvCompressionCodec;
+        protected int csvCoalesceSize;
 
 
         protected Random rng = new Random();
@@ -152,6 +158,15 @@ public abstract class BaseSparkTest implements SparkTest {
             return (T)this;
         }
 
+        public T csvCompressionCodec(CsvCompressionCodec csvCompressionCodec){
+            this.csvCompressionCodec = csvCompressionCodec;
+            return (T)this;
+        }
+
+        public T csvCoalesceSize(int csvCoalesceSize){
+            this.csvCoalesceSize = csvCoalesceSize;
+            return (T)this;
+        }
 
     }
 
