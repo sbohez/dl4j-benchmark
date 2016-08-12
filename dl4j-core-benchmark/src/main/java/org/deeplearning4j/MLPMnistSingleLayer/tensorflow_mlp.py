@@ -32,7 +32,7 @@ tf.app.flags.DEFINE_integer('test_iter', 100, 'Number of iterations to run test.
 tf.app.flags.DEFINE_integer('hidden1_units', 1000, 'Number of units in hidden layer 1.')
 tf.app.flags.DEFINE_integer('batch_size', 100, 'Batch size. Must divide evenly into the dataset sizes.')
 tf.app.flags.DEFINE_string('train_dir', 'data', 'Directory to put the training data.')
-tf.app.flags.DEFINE_float('learning_rate', 6e-3, 'Initial learning rate.')
+tf.app.flags.DEFINE_float('learning_rate', 6e-4, 'Initial learning rate.')
 tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
 tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
@@ -88,6 +88,7 @@ def run(core_type="CPU"):
     test_time = time.time()
     util.do_eval(sess, logits, images_placeholder, labels_placeholder, mnist.test, ONE_HOT, FLAGS.test_iter, FLAGS.batch_size)
     test_time = time.time() - test_time
+    sess.close
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
@@ -98,12 +99,5 @@ def run(core_type="CPU"):
 
 
 if __name__ == "__main__":
-    # TODO fix
-    # parser = argparse.ArgumentParser()
-    # subparsers = parser.add_subparsers()
-    # parser.add_argument('-core_type', action="Use CPU, GPU or MULTI for mulitple gpus"
-    #
-    # args = parser.parse_args()
-    # run(args.core_type)
     run(sys.argv[1])
 

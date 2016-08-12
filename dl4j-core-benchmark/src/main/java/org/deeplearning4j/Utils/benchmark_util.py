@@ -55,11 +55,6 @@ def fill_feed_dict(data_set, images_pl, labels_pl, batch_size):
 
 
 def init_weights(shape, seed, l2):
-    # Xavier weight initialization
-    # (fan_in, fan_out) = shape
-    # low = -1*np.sqrt(1.0/(fan_in + fan_out))
-    # high = 1*np.sqrt(1.0/(fan_in + fan_out))
-    # weights = tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, seed=seed, dtype=DTYPE))
     with tf.device(DEVICE):
         weights = tf.get_variable("weights", shape,
                                   initializer=tf.contrib.layers.xavier_initializer(uniform=True, seed=seed, dtype=DTYPE), dtype=DTYPE)
@@ -95,16 +90,14 @@ def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot,
     LOGGER.debug("Evaluate Model")
     correct_count = 0
     num_examples = data.num_examples
-    for iter in xrange(test_iter):
+    for _ in xrange(test_iter):
         if one_hot is False:
             feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder)
             correct_count += sess.run(evaluation_topk(logits, labels_placeholder), feed_dict=feed_dict)
         else:
             feed_dict = fill_feed_dict(data, images_placeholder, labels_placeholder, batch_size)
             correct_count += sess.run(prediction(logits, labels_placeholder), feed_dict=feed_dict)
-        if iter % 10 == 0: LOGGER.debug("Eval: ", (correct_count/iter))
 
-    sess.close
     print("Accuracy: %.2f" % ((correct_count / num_examples) * 100))
 
 

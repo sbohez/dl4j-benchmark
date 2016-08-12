@@ -69,7 +69,7 @@ Bottom line this data is preliminary, and we are working to confirm performance.
 | ---------- |:-----:| -----:| -----:| --------:| 
 | Dl4j       | 9m53s | 2m26s | 58s   | ~97.4%   | 
 | Caffe      | 4m21s |   14s | 41s   | ~97.4%   |
-| Tensorflow | 1m10s |   45s | TBV   | ~98.3%   |
+| Tensorflow | 1m10s |   45s | TBV   | ~98.3%*  |
 | Torch      | 5m14s | 1m11s | TBV   | ~97.9%   |
 
 **Lenet Example w/ cuDNN**
@@ -81,7 +81,9 @@ Bottom line this data is preliminary, and we are working to confirm performance.
 | Tensorflow | 5m11s | 1m42s | TBV   | ~98.5%   |
 | Torch      | 14m24s| 4m52s | TBV   | ~98.1%   |
 
-Note: Accuracy is based on CPU & single GPU.
+Note: 
+ * Tensorflow required learning rate modification on MLP by 1/10th otherwise accuracy drops to 9%
+ - Accuracy is based on CPU & single GPU.
 
 ## *TODO*
 Help is welcome to improve comparisons. If you know a better way or see a fix that is needed, please submit a pull request. Top of mind next steps that help would be appreciated:

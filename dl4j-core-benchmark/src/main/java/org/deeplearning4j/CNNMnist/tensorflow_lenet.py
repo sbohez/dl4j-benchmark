@@ -18,7 +18,6 @@ MNIST tutorial: https://tensorflow.org/tutorials/mnist/tf/index.html
 # To maintain model in session prevents from setting different test batch size from training like other platform examples on GPU?
 
 
-import argparse
 import numpy as np
 import re
 import tensorflow as tf
@@ -140,7 +139,7 @@ def run_training(train_data, num_gpus, use_cudnn):
 '''
 Multi-GPUs
 '''
-def tower_loss(data, scope, images_placeholder, labels_placeholder, use_cudnn):
+def tower_loss(scope, images_placeholder, labels_placeholder, use_cudnn):
     """Calculate the total loss on a single tower running the CIFAR model.
     """
     # Build inference Graph.
@@ -154,7 +153,7 @@ def tower_loss(data, scope, images_placeholder, labels_placeholder, use_cudnn):
     losses = tf.get_collection('losses', scope)
 
     # Calculate the total loss for the current tower.
-    print losses
+    util.LOGGER.debug(losses)
     total_loss = tf.add_n(losses, name='total_loss')
 
     # Compute the moving average of all individual losses and the total loss.
@@ -238,13 +237,13 @@ def run_multi_training(data, num_gpus, use_cudnn):
                     # Calculate the loss for one tower of the CIFAR model. This function
                     # constructs the entire CIFAR model but shares the variables across
                     # all towers.
-                    loss = tower_loss(data, scope, images_placeholder, labels_placeholder, use_cudnn)
+                    loss = tower_loss(scope, images_placeholder, labels_placeholder, use_cudnn)
 
                     # Reuse variables for the next tower.
                     tf.get_variable_scope().reuse_variables()
 
                     # Retain the summaries from the final tower.
-                    # summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+                    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
                     # Calculate the gradients for the batch of data on this CIFAR tower.
                     grads = opt.compute_gradients(loss)
@@ -256,8 +255,19 @@ def run_multi_training(data, num_gpus, use_cudnn):
         # synchronization point across all towers.
         grads = average_gradients(tower_grads)
 
+        summaries.append(tf.scalar_summary('learning_rate', lr))
+        # Add histograms for gradients.
+        for grad, var in grads:
+            if grad is not None:
+                summaries.append(
+                        tf.histogram_summary(var.op.name + '/gradients', grad))
+
         # Apply the gradients to adjust the shared variables.
         apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+
+        # Add histograms for trainable variables.
+        for var in tf.trainable_variables():
+            summaries.append(tf.histogram_summary(var.op.name, var))
 
         # Track the moving averages of all trainable variables.
         variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY, global_step)
@@ -265,6 +275,8 @@ def run_multi_training(data, num_gpus, use_cudnn):
 
         # Group all updates to into a single train op.
         train_op = tf.group(apply_gradient_op, variables_averages_op)
+
+        summary_op = tf.merge_summary(summaries)
 
         # Build an initialization operation to run below.
         init = tf.initialize_all_variables()
@@ -275,6 +287,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
         sess.run(init)
 
         tf.train.start_queue_runners(sess=sess)
+        summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, sess.graph)
 
         train_time = time.time()
         for iter in xrange(FLAGS.max_iter):
@@ -283,6 +296,10 @@ def run_multi_training(data, num_gpus, use_cudnn):
 
             if iter % 100 == 0: util.LOGGER.debug('Iter %d: loss = %.2f' % (iter, loss_value))
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+
+            if iter % 100 == 0:
+                summary_str = sess.run(summary_op)
+                summary_writer.add_summary(summary_str, iter)
 
     train_time = time.time() - train_time
     return sess, train_time, images_placeholder, labels_placeholder
@@ -307,6 +324,7 @@ def run(core_type="CPU"):
     test_time = time.time()
     util.do_eval(sess, logits, images_placeholder, labels_placeholder, data_sets.test, ONE_HOT, FLAGS.test_iter, FLAGS.batch_size)
     test_time = time.time() - test_time
+    sess.close
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
