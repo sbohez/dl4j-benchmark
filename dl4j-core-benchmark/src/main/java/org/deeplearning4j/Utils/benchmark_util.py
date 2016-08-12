@@ -105,7 +105,7 @@ def do_eval(sess, logits, images_placeholder, labels_placeholder, data, one_hot,
         LOGGER.debug("Eval", iter)
 
     sess.close
-    print("Accuracy: %d" % (correct_count / num_examples) * 100)
+    print("Accuracy: %.2f" % ((correct_count / num_examples) * 100))
 
 
 def printTime(time_type, time):
