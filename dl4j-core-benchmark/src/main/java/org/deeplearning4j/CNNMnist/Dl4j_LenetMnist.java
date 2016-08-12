@@ -1,4 +1,4 @@
-package org.dl4j.benchmarks.CNNMnist;
+package org.deeplearning4j.CNNMnist;
 
 
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
@@ -16,6 +16,8 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.DecimalFormat;
+
 /**
  *
  */
@@ -23,7 +25,7 @@ public class Dl4j_LenetMnist {
     private static final Logger log = LoggerFactory.getLogger(Dl4j_LenetMnist.class);
 
     // values to pass in from command line when compiled, esp running remotely
-    @Option(name="--numGPUWorkers",usage="How many workers to use for multiple GPUs.",aliases = "-mT")
+    @Option(name="--numGPUWorkers",usage="How many workers to use for multiple GPUs.",aliases = "-nGW")
     // Pass in 8 for 4 GPUs
     public int numGPUWorkers = 0;
     @Option(name="--halfPrecision",usage="Apply half precision for GPUs.",aliases = "-ha")
@@ -67,7 +69,9 @@ public class Dl4j_LenetMnist {
 
         long testTime = System.currentTimeMillis();
         Evaluation eval = network.evaluate(mnistTest);
-        log.info(eval.stats());
+        log.debug(eval.stats());
+        DecimalFormat df = new DecimalFormat("#.####");
+        log.info(df.format(eval.accuracy()));
         testTime = System.currentTimeMillis() - testTime;
 
         totalTime = System.currentTimeMillis() - totalTime ;

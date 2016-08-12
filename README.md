@@ -76,11 +76,12 @@ Bottom line this data is preliminary, and we are working to confirm performance.
 
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------: |------:| -----:| -----:| --------:| 
-| Dl4j       | 27m3s | 2m55s | TBV   | ~99.0%   | 
-| Caffe      | 14m29s|   45s | 1m00s | ~98.8%   |
+| Dl4j       | 27m3s | 2m55s | 1m5s  | ~99.0%   | 
+| Caffe      | 14m29s|   45s | 1m0s  | ~98.8%   |
 | Tensorflow | 5m11s | 1m42s | TBV   | ~98.5%   |
 | Torch      | 14m24s| 4m52s | TBV   | ~98.1%   |
 
+Note: Accuracy is based on CPU & single GPU.
 
 ## *TODO*
 Help is welcome to improve comparisons. If you know a better way or see a fix that is needed, please submit a pull request. Top of mind next steps that help would be appreciated:

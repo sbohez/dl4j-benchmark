@@ -22,6 +22,8 @@ import org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.DecimalFormat;
+
 /**
  *
  */
@@ -104,7 +106,9 @@ public class Dl4j_MLPMnistSingleLayer{
 //            log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
         Evaluation eval = network.evaluate(mnistTest);
-        log.info(eval.stats());
+        log.debug(eval.stats());
+        DecimalFormat df = new DecimalFormat("#.####");
+        log.info(df.format(eval.accuracy()));
         testTime = System.currentTimeMillis() - testTime;
 
         totalTime = System.currentTimeMillis() - totalTime;

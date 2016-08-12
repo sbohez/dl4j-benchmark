@@ -40,22 +40,12 @@ public class OtherTest {
         int iterations = 1;
         int seed = 123;
 
-
-
         CudaEnvironment.getInstance().getConfiguration()
-                // key option enabled
                 .allowMultiGPU(true)
-
-                // we're allowing larger memory caches
                 .setMaximumDeviceCache(3L * 1024L * 1024L * 1024L)
-
                 .setMaximumHostCache(6L * 1024L * 1024L * 1024L)
-
                 .setMaximumGridSize(512)
-
                 .setMaximumBlockSize(512)
-
-                // cross-device access is used for faster model averaging over pcie
                 .allowCrossDeviceAccess(true);
 
         log.info("Load data....");
@@ -115,19 +105,9 @@ public class OtherTest {
         ParallelWrapper wrapper = new ParallelWrapper.Builder(model)
                 // DataSets prefetching options. Set this value with respect to number of actual devices
                 .prefetchBuffer(24)
-
-                // set number of workers equal or higher then number of available devices. x1-x2 are good values to start with
                 .workers(2)
-
-                // rare averaging improves performance, but might reduce model accuracy
                 .averagingFrequency(3)
-
-                // if set to TRUE, on every averaging model score will be reported
                 .reportScoreAfterAveraging(true)
-
-                // optinal parameter, set to fals ONLY if your system has support P2P memory access across PCIe (hint: AWS do not support P2P)
-                .useLegacyAveraging(false)
-
                 .build();
 
         for( int i=0; i<nEpochs; i++ ) {

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-time java -cp target/Dl4j-Benchmarks-1.0-SNAPSHOT.jar org.dl4j.benchmarks.Cifar10.Dl4j_Cifar10
+time java -cp dl4j-core-benchmark/dl4j-core-benchmark.jar org.deeplearning4j.Cifar10.Dl4j_Cifar10
