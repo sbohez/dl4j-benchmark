@@ -47,6 +47,10 @@ public interface SparkTest extends Serializable {
 
     DataLoadingMethod getDataLoadingMethod();
 
+    CsvCompressionCodec getCsvCompressionCodec();
+
+    int getCsvCoalesceSize();
+
     String toJson();
 
     String toYaml();

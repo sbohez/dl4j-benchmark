@@ -11,6 +11,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapred.SequenceFileOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -32,6 +34,7 @@ import org.deeplearning4j.spark.stats.StatsUtils;
 import org.deeplearning4j.spark.time.TimeSource;
 import org.deeplearning4j.spark.time.TimeSourceProvider;
 import org.deeplearning4j.spark.util.SparkUtils;
+import org.deeplearning4j.train.config.CsvCompressionCodec;
 import org.deeplearning4j.train.config.MLPTest;
 import org.deeplearning4j.train.config.RNNTest;
 import org.deeplearning4j.train.config.SparkTest;
@@ -59,8 +62,17 @@ public class RunTrainingTests {
     @Parameter(names = "-testType", description = "Type of test to run. One of: MLP, RNN, CNN")
     protected String testType = TestType.MLP.name();
 
-    @Parameter(names = "-dataLoadingMethods", description = "List of data loading methods to test", variableArity = true)
-    protected List<String> dataLoadingMethods = new ArrayList<>(Arrays.asList(DataLoadingMethod.SparkBinaryFiles.name(), DataLoadingMethod.Parallelize.name(), DataLoadingMethod.StringPath.name()));
+    @Parameter(names = "-averagingFrequency", description = "Averaging frequency (or frequencies) to test: as a list", variableArity = true)
+    protected List<Integer> averagingFrequency = Arrays.asList(5);
+
+    @Parameter(names = "-dataLoadingMethods", description = "List of data loading methods to test", variableArity = true, converter = EnumConverters.DataLoadingMethodEnumConverter.class)
+    protected List<DataLoadingMethod> dataLoadingMethods = new ArrayList<>(Arrays.asList(DataLoadingMethod.SparkBinaryFiles, DataLoadingMethod.Parallelize, DataLoadingMethod.StringPath));
+
+    @Parameter(names = "-csvCompressionCodec", description = "List of compression codecs used for CSV tests. Options: None, Deflate, GZip, BZip, LZ4, Snappy", variableArity = true)
+    protected List<CsvCompressionCodec> csvCompressionCodecs = new ArrayList<>(Arrays.asList(CsvCompressionCodec.None));
+
+    @Parameter(names = "-csvCoalesceSize", description = "Before writing the CSV file: should we coalesce the data, or not? -1 = don't coalesce, otherwise specify the number of partitions to coalesce to")
+    protected int csvCoalesceSize = -1;
 
     @Parameter(names = "-numDataSetObjects", description = "Number of test files (DataSet objects of size miniBatchSizePerWorker) - as list", variableArity = true)
     protected List<Integer> numDataSetObjects = new ArrayList<>(Arrays.asList(2000));
@@ -165,44 +177,96 @@ public class RunTrainingTests {
         for (Integer np : numParams) {
             for (Integer ds : dataSize) {
                 for (Integer mbs : miniBatchSizePerWorker) {
-                    for (String dataLoadingMethod : dataLoadingMethods) {
+                    for (DataLoadingMethod dataLoadingMethod : dataLoadingMethods) {
                         for(RepartitionStrategy rs : repartitionStrategy ) {
                             for(Integer numDSObjs : numDataSetObjects) {
+                                for (Integer avgFreq : averagingFrequency) {
 
-                                switch (TestType.valueOf(testType)) {
-                                    case MLP:
-                                        testsToRun.add(
-                                                new MLPTest.Builder()
-                                                        .numDataSetObjects(numDSObjs)
-                                                        .paramsSize(np)
-                                                        .dataSize(ds)
-                                                        .dataLoadingMethod(DataLoadingMethod.valueOf(dataLoadingMethod))
-                                                        .minibatchSizePerWorker(mbs)
-                                                        .saveUpdater(saveUpdater)
-                                                        .repartition(repartition)
-                                                        .repartitionStrategy(rs)
-                                                        .workerPrefetchNumBatches(workerPrefetchNumBatches)
-                                                        .build());
-                                        break;
-                                    case RNN:
-                                        testsToRun.add(
-                                                new RNNTest.Builder()
-                                                        .numDataSetObjects(numDSObjs)
-                                                        .paramsSize(np)
-                                                        .dataSize(ds)
-                                                        .dataLoadingMethod(DataLoadingMethod.valueOf(dataLoadingMethod))
-                                                        .minibatchSizePerWorker(mbs)
-                                                        .saveUpdater(saveUpdater)
-                                                        .repartition(repartition)
-                                                        .repartitionStrategy(rs)
-                                                        .workerPrefetchNumBatches(workerPrefetchNumBatches)
-                                                        .timeSeriesLength(rnnTimeSeriesLength)
-                                                        .build());
-                                        break;
-                                    case CNN:
-                                        throw new UnsupportedOperationException("CNN tests not yet implemented");
-                                    default:
-                                        throw new RuntimeException("Unknown test type: " + testType);
+                                    if (dataLoadingMethod == DataLoadingMethod.CSV) {
+                                        for (CsvCompressionCodec c : csvCompressionCodecs) {
+                                            switch (TestType.valueOf(testType)) {
+                                                case MLP:
+                                                    testsToRun.add(
+                                                            new MLPTest.Builder()
+                                                                    .numDataSetObjects(numDSObjs)
+                                                                    .paramsSize(np)
+                                                                    .dataSize(ds)
+                                                                    .dataLoadingMethod(dataLoadingMethod)
+                                                                    .averagingFrequency(avgFreq)
+                                                                    .minibatchSizePerWorker(mbs)
+                                                                    .saveUpdater(saveUpdater)
+                                                                    .repartition(repartition)
+                                                                    .repartitionStrategy(rs)
+                                                                    .workerPrefetchNumBatches(workerPrefetchNumBatches)
+                                                                    .csvCompressionCodec(c)
+                                                                    .csvCoalesceSize(csvCoalesceSize)
+                                                                    .build());
+                                                    break;
+                                                case RNN:
+                                                    testsToRun.add(
+                                                            new RNNTest.Builder()
+                                                                    .numDataSetObjects(numDSObjs)
+                                                                    .paramsSize(np)
+                                                                    .dataSize(ds)
+                                                                    .dataLoadingMethod(dataLoadingMethod)
+                                                                    .averagingFrequency(avgFreq)
+                                                                    .minibatchSizePerWorker(mbs)
+                                                                    .saveUpdater(saveUpdater)
+                                                                    .repartition(repartition)
+                                                                    .repartitionStrategy(rs)
+                                                                    .workerPrefetchNumBatches(workerPrefetchNumBatches)
+                                                                    .timeSeriesLength(rnnTimeSeriesLength)
+                                                                    .csvCompressionCodec(c)
+                                                                    .csvCoalesceSize(csvCoalesceSize)
+                                                                    .build());
+                                                    break;
+                                                case CNN:
+                                                    throw new UnsupportedOperationException("CNN tests not yet implemented");
+                                                default:
+                                                    throw new RuntimeException("Unknown test type: " + testType);
+                                            }
+                                        }
+                                    } else {
+                                        switch (TestType.valueOf(testType)) {
+                                            case MLP:
+                                                testsToRun.add(
+                                                        new MLPTest.Builder()
+                                                                .numDataSetObjects(numDSObjs)
+                                                                .paramsSize(np)
+                                                                .dataSize(ds)
+                                                                .dataLoadingMethod(dataLoadingMethod)
+                                                                .averagingFrequency(avgFreq)
+                                                                .minibatchSizePerWorker(mbs)
+                                                                .saveUpdater(saveUpdater)
+                                                                .repartition(repartition)
+                                                                .repartitionStrategy(rs)
+                                                                .workerPrefetchNumBatches(workerPrefetchNumBatches)
+                                                                .csvCoalesceSize(csvCoalesceSize)
+                                                                .build());
+                                                break;
+                                            case RNN:
+                                                testsToRun.add(
+                                                        new RNNTest.Builder()
+                                                                .numDataSetObjects(numDSObjs)
+                                                                .paramsSize(np)
+                                                                .dataSize(ds)
+                                                                .dataLoadingMethod(dataLoadingMethod)
+                                                                .averagingFrequency(avgFreq)
+                                                                .minibatchSizePerWorker(mbs)
+                                                                .saveUpdater(saveUpdater)
+                                                                .repartition(repartition)
+                                                                .repartitionStrategy(rs)
+                                                                .workerPrefetchNumBatches(workerPrefetchNumBatches)
+                                                                .timeSeriesLength(rnnTimeSeriesLength)
+                                                                .csvCoalesceSize(csvCoalesceSize)
+                                                                .build());
+                                                break;
+                                            case CNN:
+                                                throw new UnsupportedOperationException("CNN tests not yet implemented");
+                                            default:
+                                                throw new RuntimeException("Unknown test type: " + testType);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -290,8 +354,32 @@ public class RunTrainingTests {
 
                     intRDD = sc.parallelize(intList);
                     JavaRDD<String> csvData = intRDD.map(new GenerateCsvDataFunction(valuesPerLine));
-                    csvData.coalesce(sc.defaultParallelism());
-                    csvData.saveAsTextFile(dataDir);
+                    if(sparkTest.getCsvCoalesceSize() > 0){
+                        csvData = csvData.coalesce(sparkTest.getCsvCoalesceSize());
+                    } else {
+                        csvData.coalesce(sc.defaultParallelism());
+                    }
+
+                    Configuration c = sc.hadoopConfiguration();
+                    if(sparkTest.getCsvCompressionCodec() == CsvCompressionCodec.None){
+                        //Default compression codec as specified in hadoop configuration will be used normally, depending
+                        // on the cluster configuration. For example, we might get Snappy output from the saveAsTextFile
+                        // operation, even if we set test configuration to "None". This isn't what we want, so we'll override
+                        // the appropriate configuration options here.
+                        c.set("mapreduce.map.output.compress","false");
+                        c.set("mapred.output.compress", "false");
+
+                        csvData.saveAsTextFile(dataDir);
+                    } else {
+                        Class<? extends CompressionCodec> ccClass = sparkTest.getCsvCompressionCodec().getCodec();
+                        c.set("mapreduce.map.output.compress","true");
+                        c.set("mapred.output.compress", "true");
+                        c.setClass("mapreduce.map.output.compress.codec", ccClass, CompressionCodec.class);
+                        c.set("mapred.output.compression.codec",ccClass.getName());
+
+                        csvData.saveAsTextFile(dataDir, ccClass);
+                    }
+
 
                     break;
                 case SequenceFile:
@@ -318,6 +406,7 @@ public class RunTrainingTests {
 
             int dataSetObjectSize = (sparkTest.getDataLoadingMethod() == DataLoadingMethod.CSV ? 1 : sparkTest.getMinibatchSizePerWorker());
             TrainingMaster tm = new ParameterAveragingTrainingMaster.Builder(dataSetObjectSize)
+                    .averagingFrequency(sparkTest.getAveragingFrequency())
                     .batchSizePerWorker(sparkTest.getMinibatchSizePerWorker())
                     .saveUpdater(sparkTest.isSaveUpdater())
                     .repartionData(sparkTest.getRepartition())
