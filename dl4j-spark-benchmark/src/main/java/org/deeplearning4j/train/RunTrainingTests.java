@@ -124,8 +124,6 @@ public class RunTrainingTests {
     }
 
     protected void entryPoint(String[] args) throws Exception {
-        TimeSource ts = TimeSourceProvider.getInstance();
-
         JCommander jcmdr = new JCommander(this);
         try {
             jcmdr.parse(args);
