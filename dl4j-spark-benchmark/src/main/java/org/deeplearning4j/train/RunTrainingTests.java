@@ -68,7 +68,7 @@ public class RunTrainingTests {
     @Parameter(names = "-dataLoadingMethods", description = "List of data loading methods to test", variableArity = true, converter = EnumConverters.DataLoadingMethodEnumConverter.class)
     protected List<DataLoadingMethod> dataLoadingMethods = new ArrayList<>(Arrays.asList(DataLoadingMethod.SparkBinaryFiles, DataLoadingMethod.Parallelize, DataLoadingMethod.StringPath));
 
-    @Parameter(names = "-csvCompressionCodec", description = "List of compression codecs used for CSV tests. Options: None, Deflate, GZip, BZip, LZ4, Snappy", variableArity = true)
+    @Parameter(names = "-csvCompressionCodec", description = "List of compression codecs used for CSV tests. Options: None, Deflate, GZip, BZip, LZ4, Snappy", variableArity = true, converter = EnumConverters.CsvCompressionCodecConverter.class)
     protected List<CsvCompressionCodec> csvCompressionCodecs = new ArrayList<>(Arrays.asList(CsvCompressionCodec.None));
 
     @Parameter(names = "-csvCoalesceSize", description = "Before writing the CSV file: should we coalesce the data, or not? -1 = don't coalesce, otherwise specify the number of partitions to coalesce to")
