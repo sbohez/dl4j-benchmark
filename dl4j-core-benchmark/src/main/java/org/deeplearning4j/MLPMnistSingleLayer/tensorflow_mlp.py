@@ -17,6 +17,7 @@ import sys
 from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 import Utils.benchmark_util as util
+import numpy as np
 
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
@@ -83,6 +84,8 @@ def run(core_type="CPU"):
             _, loss_value = sess.run([train_op, cross_entropy], feed_dict=feed_dict)
             if iter % 100 == 0:  util.LOGGER.debug('Iter %d: loss = %.2f' % (iter, loss_value))
         train_time = time.time() - train_time
+
+    assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
     # Test trained model
     test_time = time.time()

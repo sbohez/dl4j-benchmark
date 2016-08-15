@@ -30,6 +30,7 @@ from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 import Utils.benchmark_util as util
 import pdb
+import numpy as np
 
 
 NUM_CLASSES = 10
@@ -61,6 +62,7 @@ tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
 tf.app.flags.DEFINE_float('decay_rate', 1e-3, 'Learning rate decay rate.')
 tf.app.flags.DEFINE_float('policy_power', 0.75, 'Policy power.') # current inverse_time_decay is missing this as part of denom calc
 tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
+tf.app.flags.DEFINE_boolean('fp16', False, 'Use fp16.')
 
 
 def _inference(images, use_cudnn):
@@ -100,13 +102,17 @@ def _inference(images, use_cudnn):
     return logits
 
 
-def _setup_loss(logits, labels):
+def _setup_loss(logits, labels, core_type="CPU"):
     """Calculates the loss from the logits and the labels.
     """
     labels = tf.to_int32(labels) if(ONE_HOT is False) else labels
     cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels, name='xentropy') if(ONE_HOT is False) else
                                    tf.nn.softmax_cross_entropy_with_logits(logits, labels, name='xentropy'))
-    tf.scalar_summary(cross_entropy.op.name, cross_entropy)
+    if core_type != "MULTI":
+        tf.scalar_summary(cross_entropy.op.name, cross_entropy)
+    else:
+        tf.add_to_collection("losses", cross_entropy)
+        tf.add_n(tf.get_collection('losses'), name='total_loss')
     return cross_entropy
 
 
@@ -140,21 +146,14 @@ def run_training(train_data, num_gpus, use_cudnn):
 '''
 Multi-GPUs
 '''
-def tower_loss(scope, images_placeholder, labels_placeholder, use_cudnn):
+def tower_loss(logits, scope):
     """Calculate the total loss on a single tower running the CIFAR model.
     """
-    # Build inference Graph.
-    logits = _inference(images_placeholder, use_cudnn)
-
-    # Build the portion of the Graph calculating the losses. Note that we will
-    # assemble the total_loss using a custom function below.
-    _ = _setup_loss(logits, labels_placeholder)
 
     # Assemble all of the losses for the current tower only.
     losses = tf.get_collection('losses', scope)
 
     # Calculate the total loss for the current tower.
-    util.LOGGER.debug(losses)
     total_loss = tf.add_n(losses, name='total_loss')
 
     # Compute the moving average of all individual losses and the total loss.
@@ -168,10 +167,9 @@ def tower_loss(scope, images_placeholder, labels_placeholder, use_cudnn):
         # session. This helps the clarity of presentation on tensorboard.
         loss_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', l.op.name)
         # Name each loss as '(raw)' and name the moving average version of the loss
-        # as the original loss name.
         tf.scalar_summary(loss_name +' (raw)', l)
         tf.scalar_summary(loss_name, loss_averages.average(l))
-
+    pdb.set_trace()
     with tf.control_dependencies([loss_averages_op]):
         total_loss = tf.identity(total_loss)
     return total_loss
@@ -180,7 +178,7 @@ def tower_loss(scope, images_placeholder, labels_placeholder, use_cudnn):
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
     """
-    print("TOWER GRADS*******", tower_grads)
+    print("TOWER GRADS AVG*******", tower_grads)
     average_grads = []
     for grad_and_vars in zip(*tower_grads):
         # Note that each grad_and_vars looks like the following:
@@ -188,7 +186,6 @@ def average_gradients(tower_grads):
         grads = []
         for g, _ in grad_and_vars:
             # Add 0 dimension to the gradients to represent the tower.
-            pdb.set_trace()
             expanded_g = tf.expand_dims(g, 0)
 
             # Append on a 'tower' dimension which we will average over below.
@@ -203,17 +200,17 @@ def average_gradients(tower_grads):
         # the Variable.
         v = grad_and_vars[0][1]
         grad_and_var = (grad, v)
+        pdb.set_trace()
         average_grads.append(grad_and_var)
     return average_grads
 
 
 def run_multi_training(data, num_gpus, use_cudnn):
     """Train for a number of iterations."""
-    util.LOGGER.debug("Train Model")
     with tf.Graph().as_default(), tf.device('/cpu:0'):
         # Create a variable to count the number of train() calls. This equals the
         # number of batches processed * FLAGS.num_gpus.
-        images_placeholder, labels_placeholder = util.placeholder_inputs(ONE_HOT, IMAGE_PIXELS, NUM_CLASSES)
+        # images_placeholder, labels_placeholder = util.placeholder_inputs(ONE_HOT, IMAGE_PIXELS, NUM_CLASSES)
 
         global_step = tf.get_variable('global_step', [],
                                       initializer=tf.constant_initializer(0), trainable=False)
@@ -230,17 +227,24 @@ def run_multi_training(data, num_gpus, use_cudnn):
                                         staircase=True)
 
         # Create an optimizer that performs gradient descent.
-        opt = tf.train.MomentumOptimizer(lr, FLAGS.momentum)
-
+        # opt = tf.train.MomentumOptimizer(lr, FLAGS.momentum)
+        opt = tf.train.GradientDescentOptimizer(lr)
         # Calculate the gradients for each model tower.
         tower_grads = []
         for i in xrange(num_gpus):
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('%s_%d' % (TOWER_NAME, i)) as scope:
-                    # Calculate the loss for one tower of the CIFAR model. This function
-                    # constructs the entire CIFAR model but shares the variables across
-                    # all towers.
-                    loss = tower_loss(scope, images_placeholder, labels_placeholder, use_cudnn)
+                    images, labels = data.next_batch(FLAGS.batch_size)
+
+                    # Build inference Graph.
+                    logits = _inference(images, use_cudnn)
+
+                    # Build the portion of the Graph calculating the losses. Note that we will
+                    # assemble the total_loss using a custom function below.
+                    _ = _setup_loss(logits, labels)
+
+                    # Calculate the loss for one tower. One model constructed per tower and variables shared across
+                    loss = tower_loss(logits, scope)
 
                     print("TOWER LOSS*******", loss)
                     # Reuse variables for the next tower.
@@ -249,8 +253,9 @@ def run_multi_training(data, num_gpus, use_cudnn):
                     # Retain the summaries from the final tower.
                     summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-                    # Calculate the gradients for the batch of data on this CIFAR tower.
+                    # Calculate the gradients for the batch of data on this tower.
                     grads = opt.compute_gradients(loss)
+                    print("TOWER GRADS*******", grads)
 
                     # Keep track of the gradients across all towers.
                     tower_grads.append(grads)
@@ -260,6 +265,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
         grads = average_gradients(tower_grads)
 
         summaries.append(tf.scalar_summary('learning_rate', lr))
+
         # Add histograms for gradients.
         for grad, var in grads:
             if grad is not None:
@@ -293,10 +299,10 @@ def run_multi_training(data, num_gpus, use_cudnn):
         summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, sess.graph)
 
         train_time = time.time()
+        util.LOGGER.debug("Train Model")
         for iter in xrange(FLAGS.max_iter):
-            print("TRAINING NOW************")
-            feed_dict = util.fill_feed_dict(data, images_placeholder, labels_placeholder)
-            _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
+            # feed_dict = util.fill_feed_dict(data, images_placeholder, labels_placeholder)
+            _, loss_value = sess.run([train_op, loss])
 
             if iter % 100 == 0: util.LOGGER.debug('Iter %d: loss = %.2f' % (iter, loss_value))
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
@@ -304,6 +310,8 @@ def run_multi_training(data, num_gpus, use_cudnn):
             if iter % 100 == 0:
                 summary_str = sess.run(summary_op)
                 summary_writer.add_summary(summary_str, iter)
+
+    assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
     train_time = time.time() - train_time
     return sess, train_time, images_placeholder, labels_placeholder
@@ -313,7 +321,8 @@ def run(core_type="CPU"):
     total_time = time.time()
 
     data_load_time = time.time()
-    data_sets = util.load_data(input_data, ONE_HOT)
+    data_sets = util.load_data(input_data, ONE_HOT, core_type, FLAGS.fp16)
+    # if core_type == "MULTI": data_sets = tf.split(0, FLAGS.num_gpus, data_sets.train)
     data_load_time = time.time() - data_load_time
 
     num_gpus = util.NUM_GPUS[core_type]
