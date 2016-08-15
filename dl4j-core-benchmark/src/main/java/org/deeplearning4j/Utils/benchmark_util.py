@@ -4,6 +4,7 @@ import os
 import tensorflow as tf
 from six.moves import xrange
 import logging
+import re
 
 DTYPE = tf.float32
 DEVICE = '/cpu:0'
@@ -13,7 +14,7 @@ DATA_FORMAT = 'NHWC' # number examples, height, width, channels
 
 # create logger
 LOGGER = logging.getLogger('simple_example')
-LOGGER.setLevel(logging.DEBUG)
+LOGGER.setLevel(logging.INFO)
 
 # create console handler
 ch = logging.StreamHandler()
@@ -27,14 +28,13 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 LOGGER.addHandler(ch)
+TOWER_NAME = 'tower'
 
-def load_data(input_data, one_hot, core_type, fp16=False):
+def load_data(input_data, one_hot):
     if(one_hot is False):
         data = input_data.read_data_sets(DATA_DIR)
     else:
         data = input_data.read_data_sets(DATA_DIR, one_hot=True)
-    # if (core_type != "CPU" and not fp16): tf.cast(data.uint8image, tf.float32)
-    if (fp16): tf.cast(data, tf.float16)
     return data
 
 
@@ -58,6 +58,9 @@ def fill_feed_dict(data_set, images_pl, labels_pl, batch_size):
     }
     return feed_dict
 
+def init_bias(shape):
+    with tf.device(DEVICE):
+        return tf.get_variable('biases', shape, initializer=tf.constant_initializer(0.0), dtype=DTYPE)
 
 def init_weights(shape, seed, l2):
     with tf.device(DEVICE):
@@ -85,7 +88,7 @@ def evaluation_topk(logits, labels):
 
 def prediction(logits, labels):
     correct_pred = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
-    return tf.reduce_sum(tf.cast(correct_pred, tf.float32), 0)
+    return tf.reduce_sum(tf.cast(correct_pred, DTYPE), 0)
 
 
 # TODO params are ugly - need to condense in container or turn into class
@@ -111,3 +114,59 @@ def printTime(time_type, time):
     sec = int(round(time - min*60))
     milli = time * 1000
     print(time_type + ' load time: %s min %s sec | %s millisec' %(min, sec, milli))
+
+
+# Multi-GPU Functions
+
+def tower_loss(scope):
+    """Calculate the total loss on a single tower running the CIFAR model.
+    """
+    # Assemble all of the losses for the current tower only.
+    losses = tf.get_collection('losses', scope)
+
+    # Calculate the total loss for the current tower.
+    total_loss = tf.add_n(losses, name='total_loss')
+
+    # Compute the moving average of all individual losses and the total loss.
+    loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
+    loss_averages_op = loss_averages.apply(losses + [total_loss])
+
+    # Attach a scalar summary to all individual losses and the total loss; do the
+    # same for the averaged version of the losses.
+    for l in losses + [total_loss]:
+        loss_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', l.op.name)
+
+        # Name each loss as '(raw)' and name the moving average version of the loss
+        tf.scalar_summary(loss_name +' (raw)', l)
+        tf.scalar_summary(loss_name, loss_averages.average(l))
+    with tf.control_dependencies([loss_averages_op]):
+        total_loss = tf.identity(total_loss)
+    return total_loss
+
+
+def average_gradients(tower_grads):
+    """Calculate the average gradient for each shared variable across all towers.
+    """
+    average_grads = []
+    for grad_and_vars in zip(*tower_grads):
+        # Note that each grad_and_vars looks like the following:
+        #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
+        grads = []
+        for g, _ in grad_and_vars:
+            # Add 0 dimension to the gradients to represent the tower.
+            expanded_g = tf.expand_dims(g, 0)
+
+            # Append on a 'tower' dimension which we will average over below.
+            grads.append(expanded_g)
+
+        # Average over the 'tower' dimension.
+        grad = tf.concat(0, grads)
+        grad = tf.reduce_mean(grad, 0)
+
+        # Keep in mind that the Variables are redundant because they are shared
+        # across towers. So .. we will just return the first tower's pointer to
+        # the Variable.
+        v = grad_and_vars[0][1]
+        grad_and_var = (grad, v)
+        average_grads.append(grad_and_var)
+    return average_grads
