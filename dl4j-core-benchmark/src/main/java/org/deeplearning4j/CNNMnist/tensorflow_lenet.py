@@ -29,6 +29,7 @@ import sys
 from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 import Utils.benchmark_util as util
+import pdb
 
 
 NUM_CLASSES = 10
@@ -179,6 +180,7 @@ def tower_loss(scope, images_placeholder, labels_placeholder, use_cudnn):
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
     """
+    print("TOWER GRADS*******", tower_grads)
     average_grads = []
     for grad_and_vars in zip(*tower_grads):
         # Note that each grad_and_vars looks like the following:
@@ -186,6 +188,7 @@ def average_gradients(tower_grads):
         grads = []
         for g, _ in grad_and_vars:
             # Add 0 dimension to the gradients to represent the tower.
+            pdb.set_trace()
             expanded_g = tf.expand_dims(g, 0)
 
             # Append on a 'tower' dimension which we will average over below.
@@ -210,7 +213,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
     with tf.Graph().as_default(), tf.device('/cpu:0'):
         # Create a variable to count the number of train() calls. This equals the
         # number of batches processed * FLAGS.num_gpus.
-        images_placeholder, labels_placeholder = util._placeholder_inputs(ONE_HOT, IMAGE_PIXELS, NUM_CLASSES)
+        images_placeholder, labels_placeholder = util.placeholder_inputs(ONE_HOT, IMAGE_PIXELS, NUM_CLASSES)
 
         global_step = tf.get_variable('global_step', [],
                                       initializer=tf.constant_initializer(0), trainable=False)
@@ -239,6 +242,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
                     # all towers.
                     loss = tower_loss(scope, images_placeholder, labels_placeholder, use_cudnn)
 
+                    print("TOWER LOSS*******", loss)
                     # Reuse variables for the next tower.
                     tf.get_variable_scope().reuse_variables()
 
@@ -259,8 +263,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
         # Add histograms for gradients.
         for grad, var in grads:
             if grad is not None:
-                summaries.append(
-                        tf.histogram_summary(var.op.name + '/gradients', grad))
+                summaries.append(tf.histogram_summary(var.op.name + '/gradients', grad))
 
         # Apply the gradients to adjust the shared variables.
         apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
@@ -291,6 +294,7 @@ def run_multi_training(data, num_gpus, use_cudnn):
 
         train_time = time.time()
         for iter in xrange(FLAGS.max_iter):
+            print("TRAINING NOW************")
             feed_dict = util.fill_feed_dict(data, images_placeholder, labels_placeholder)
             _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
 

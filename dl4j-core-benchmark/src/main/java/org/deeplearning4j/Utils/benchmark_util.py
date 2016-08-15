@@ -13,7 +13,7 @@ DATA_FORMAT = 'NHWC' # number examples, height, width, channels
 
 # create logger
 LOGGER = logging.getLogger('simple_example')
-LOGGER.setLevel(logging.INFO)
+LOGGER.setLevel(logging.DEBUG)
 
 # create console handler
 ch = logging.StreamHandler()
