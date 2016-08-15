@@ -20,6 +20,35 @@
     </properties>
 
     <profiles>
+
+        <profile>
+            <id>native</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <dl4j.backend>deeplearning4j-core</dl4j.backend>
+                <nd4j.backend>nd4j-native</nd4j.backend>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>cuda</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <nd4j.backend>nd4j-cuda-7.5</nd4j.backend>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.deeplearning4j</groupId>
+                    <artifactId>deeplearning4j-cuda-7.5</artifactId>
+                    <version>${dl4j.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
         <!-- Default profile - provided scope for spark: "-P sparksubmit" -->
         <profile>
             <id>sparksubmit</id>
