@@ -38,7 +38,6 @@ local opt = {
     height = 28,
     width = 28,
     ninputs = 28*28,
-    coefL2 = 5e-4,
     nGPU = 1,
     learningRate = 1e-2,
     weightDecay = 5e-4,

@@ -11,6 +11,7 @@ DEVICE = '/cpu:0'
 NUM_GPUS = {'CPU': 0, 'GPU': 1, 'MULTI': 4}
 DATA_DIR = os.getcwd() + "/dl4j-core-benchmark/src/main/resources/tf_data/"
 DATA_FORMAT = 'NHWC' # number examples, height, width, channels
+TOWER_NAME = 'tower'
 
 # create logger
 LOGGER = logging.getLogger('simple_example')
@@ -28,7 +29,6 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 LOGGER.addHandler(ch)
-TOWER_NAME = 'tower'
 
 def load_data(input_data, one_hot):
     if(one_hot is False):

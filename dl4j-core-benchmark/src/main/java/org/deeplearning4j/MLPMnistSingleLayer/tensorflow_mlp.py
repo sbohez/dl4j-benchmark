@@ -20,9 +20,9 @@ import Utils.benchmark_util as util
 
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
+MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE * 1
 ONE_HOT = True
-MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 
 FLAGS = tf.app.flags.FLAGS
 # max_iteration = (epochs * numExamples)/batchSize (15 * 60000)/128
@@ -53,6 +53,8 @@ def _inference(images):
         logits = tf.nn.softmax(tf.matmul(hidden1, weights) + biases)
     return logits
 
+def _loss(labels, logits):
+    return -tf.reduce_sum(labels*tf.log(logits))
 
 def run():
     total_time = time.time()
@@ -68,7 +70,7 @@ def run():
 
         if FLAGS.core_type != 'MULTI':
             logits = _inference(images_placeholder)
-            loss = -tf.reduce_sum(labels_placeholder*tf.log(logits)) # softmax & cross entropy
+            loss = _loss(labels_placeholder, logits)
             train_op = util.setup_optimizer(loss, FLAGS.learning_rate, FLAGS.momentum)
             config = tf.ConfigProto(device_count={'GPU': num_gpus})
             sess = tf.InteractiveSession(config=config)
@@ -83,7 +85,7 @@ def run():
                 with tf.device('/gpu:%d' % i):
                     with tf.name_scope('%s_%d' % (util.TOWER_NAME, i)) as scope:
                         logits = _inference(images_placeholder)
-                        cross_entropy = -tf.reduce_sum(labels_placeholder*tf.log(logits))
+                        cross_entropy = _loss(labels_placeholder, logits)
                         tf.add_to_collection("losses", cross_entropy)
                         tf.add_n(tf.get_collection('losses'), name='total_loss')
 
@@ -112,7 +114,8 @@ def run():
             init = tf.initialize_all_variables()
 
             sess = tf.InteractiveSession(config=tf.ConfigProto(allow_soft_placement=True,
-                                                               log_device_placement=FLAGS.log_device_placement))
+                                                               log_device_placement=FLAGS.log_device_placement,
+                                                               device_count={'GPU': num_gpus}))
             sess.run(init)
 
         train_time = time.time()

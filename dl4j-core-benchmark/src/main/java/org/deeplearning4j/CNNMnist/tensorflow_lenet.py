@@ -19,7 +19,6 @@ MNIST tutorial: https://tensorflow.org/tutorials/mnist/tf/index.html
 
 
 import numpy as np
-import re
 import tensorflow as tf
 import time
 from six.moves import xrange
@@ -55,12 +54,8 @@ tf.app.flags.DEFINE_integer('ffn1', 500, 'Number of units in feed forward layer 
 tf.app.flags.DEFINE_integer('batch_size', 100, 'Batch size. Must divide evenly into the dataset sizes.')
 tf.app.flags.DEFINE_string('train_dir', 'data', 'Directory to put the training data.')
 tf.app.flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-tf.app.flags.DEFINE_float('learning_rate_decay_factor', 0.1, 'Decay factor.')
-tf.app.flags.DEFINE_float('bias_learning_rate', 0.02, 'Initial bias rate.') #
 tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
-tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
-tf.app.flags.DEFINE_float('decay_rate', 1e-3, 'Learning rate decay rate.')
-tf.app.flags.DEFINE_float('policy_power', 0.75, 'Policy power.') # current inverse_time_decay is missing this as part of denom calc
+tf.app.flags.DEFINE_float('l2', 5e-4, 'Weight decay.')
 tf.app.flags.DEFINE_integer('seed', 42, 'Random seed.')
 tf.app.flags.DEFINE_boolean('log_device_placement', False, """Whether to log device placement.""")
 tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train', """Directory where to read model checkpoints.""")
@@ -72,7 +67,7 @@ def _inference(images, use_cudnn):
     util.LOGGER.debug("Build Model")
     with tf.variable_scope('cnn1') as scope:
         images = tf.reshape(images, [FLAGS.batch_size, HEIGHT, WIDTH,  CHANNELS])
-        kernel = util.init_weights([5, 5, CHANNELS, FLAGS.ccn_depth1], FLAGS.seed, FLAGS.batch_size)
+        kernel = util.init_weights([5, 5, CHANNELS, FLAGS.ccn_depth1], FLAGS.seed, FLAGS.l2)
         conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], "VALID", data_format= util.DATA_FORMAT,
                             use_cudnn_on_gpu=use_cudnn) #VALID no padding
         biases = util.init_bias([FLAGS.ccn_depth1])
@@ -81,7 +76,7 @@ def _inference(images, use_cudnn):
     pool1 = tf.nn.max_pool(conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID',
                            data_format=util.DATA_FORMAT, name='maxpool1')
     with tf.variable_scope('cnn2') as scope:
-        kernel = util.init_weights([5, 5, FLAGS.ccn_depth1, FLAGS.ccn_depth2], FLAGS.seed, FLAGS.batch_size)
+        kernel = util.init_weights([5, 5, FLAGS.ccn_depth1, FLAGS.ccn_depth2], FLAGS.seed, FLAGS.l2)
         conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], "VALID", data_format=util.DATA_FORMAT,
                             use_cudnn_on_gpu=use_cudnn)
         biases = util.init_bias([FLAGS.ccn_depth2])
@@ -92,17 +87,17 @@ def _inference(images, use_cudnn):
     with tf.variable_scope('ffn1') as scope:
         reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
         dim = reshape.get_shape()[1].value
-        weights = util.init_weights([dim, FLAGS.ffn1], FLAGS.seed, FLAGS.batch_size)
+        weights = util.init_weights([dim, FLAGS.ffn1], FLAGS.seed, FLAGS.l2)
         biases = util.init_bias([FLAGS.ffn1])
         ffn1 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
     with tf.variable_scope('softmax_linear') as scope:
-        weights = util.init_weights([FLAGS.ffn1, NUM_CLASSES], FLAGS.seed, FLAGS.batch_size)
+        weights = util.init_weights([FLAGS.ffn1, NUM_CLASSES], FLAGS.seed, FLAGS.l2)
         biases = util.init_bias([NUM_CLASSES])
         softmax_linear = tf.nn.softmax(tf.add(tf.matmul(ffn1, weights), biases, name=scope.name))
     return softmax_linear
 
 
-def _setup_loss(logits, labels):
+def _loss(logits, labels):
     """Calculates the loss from the logits and the labels.
     """
     # TODO setup int16 for fp16 if needed
@@ -122,7 +117,7 @@ def train(train_data, num_gpus, use_cudnn, images_placeholder, labels_placeholde
     """Train for a number of iterations."""
     logits = _inference(images_placeholder, use_cudnn)
 
-    loss = _setup_loss(logits, labels_placeholder)
+    loss = _loss(logits, labels_placeholder)
     train_op = util.setup_optimizer(loss, FLAGS.learning_rate, FLAGS.momentum)
 
     config = tf.ConfigProto(device_count={'GPU': num_gpus})
@@ -137,7 +132,7 @@ def train(train_data, num_gpus, use_cudnn, images_placeholder, labels_placeholde
         feed_dict = util.fill_feed_dict(train_data, images_placeholder, labels_placeholder, FLAGS.batch_size)
         _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
         # Write the summaries and print an overview fairly often.
-        if iter % 100 == 0: util.LOGGER.debug('Iter %d: loss = %.2f (%.3f sec)' % (iter, loss_value, 0.0))
+        if iter % 100 == 0: util.LOGGER.debug('Iter %d: loss = %.2f' % (iter, loss_value))
     train_time = time.time() - train_time
     return sess, logits, train_time
 
@@ -161,7 +156,6 @@ def multi_train(data, num_gpus, use_cudnn, images_placeholder, labels_placeholde
 
     # Create an optimizer that performs gradient descent.
     opt = tf.train.MomentumOptimizer(FLAGS.learning_rate, FLAGS.momentum)
-    # opt = tf.train.GradientDescentOptimizer(lr)
 
     # Calculate the gradients for each model tower.
     tower_grads = []
@@ -169,7 +163,7 @@ def multi_train(data, num_gpus, use_cudnn, images_placeholder, labels_placeholde
         with tf.device('/gpu:%d' % i):
             with tf.name_scope('%s_%d' % (util.TOWER_NAME, i)) as scope:
                 logits = _inference(images_placeholder, use_cudnn)
-                _ = _setup_loss(logits, labels_placeholder)
+                _ = _loss(logits, labels_placeholder)
                 # Calculate the loss for one tower. One model constructed per tower and variables shared across
                 loss = util.tower_loss(scope)
                 # Reuse variables for the next tower.
