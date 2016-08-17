@@ -22,6 +22,7 @@ local cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
 cmd:option('-cudnn', true, 'boolean flag to use cudnn for training')
 cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
+cmd:option('-threads', 8, 'Number of threads to use on the computer')
 config = cmd:parse(arg)
 if config.multi then print("Multi-GPU Not Implemented Yet") end
 
@@ -44,7 +45,7 @@ local opt = {
     nesterov = true,
     momentum =  0.9,
     dampening = 0,
-    threads = 8,
+    threads = config.threads,
     logger = log.level == logroll.DEBUG,
     plot = false,
 

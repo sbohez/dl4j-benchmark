@@ -61,32 +61,33 @@ function util.updateParams(model)
     return model
 end
 
-
-function util.makeDataParallelTable(model, use_cudnn)
-        local dpt
+function util.makeDataParallelTable(model, use_cudnn, nGPU)
+    local net = model
+    local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
+    for i = 1, nGPU do
+        cutorch.setDevice(i)
+        dpt:add(net:clone(), i)
         if use_cudnn then
-            dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
-            :add(model, gpus)
-            :threads(function()
+            dpt:threads(function()
                 local cudnn = require 'cudnn'
                 cudnn.verbose = false
-                cudnn.fastest, cudnn.benchmark = opt.cudnn_fastest, opt.cudnn_benchmark
+                cudnn.fastest,
+                cudnn.benchmark = opt.cudnn_fastest,
+                opt.cudnn_benchmark
             end)
-
-        else
-            dpt = nn.DataParallelTable(1, true, true)
-            :add(model:get(opt.nGPU), gpus)
+--            dpt:add(model:get(opt.nGPU), opt.gpus)
         end
         dpt.gradInput = nil
         model = dpt:cuda()
+    end
     return model
 end
 
 function util.convertCuda(model, use_cudnn, nGPU)
-    model = util.applyCuda(true, model)
+    require 'cunn'
     --    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
     if use_cudnn then
-        require 'cudnn'
+        local cudnn = require 'cudnn'
         cudnn.convert(model:get(nGPU), cudnn)
         cudnn.verbose = false
         cudnn.benchmark = true
@@ -98,7 +99,9 @@ function util.convertCuda(model, use_cudnn, nGPU)
         end
     end
     if nGPU > 1 then
-        model:add(util.makeDataParallelTable(model, use_cudnn))
+        model = util.makeDataParallelTable(model, use_cudnn, nGPU)
+    else
+        model = util.applyCuda(true, model)
     end
     return model
 end
