@@ -8,7 +8,7 @@ require 'optim'
 
 util = {}
 
-local opt = {
+opt = {
     cudnn_fastest = true,
     cudnn_deterministic = false,
     cudnn_benchmark = true,
@@ -24,11 +24,9 @@ testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
 function util.loadData(numExamples, numTestExamples, geometry)
     trainData = mnist.loadTrainSet(numExamples, geometry)
     trainData:normalizeGlobal()
-
     testData = mnist.loadTestSet(numTestExamples, geometry)
     testData:normalizeGlobal()
     return trainData, testData
-
 end
 
 function util.applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
@@ -65,8 +63,9 @@ function util.makeDataParallelTable(model, use_cudnn, nGPU)
     local net = model
     local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
     for i = 1, nGPU do
-        cutorch.setDevice(i)
-        dpt:add(net:clone(), i)
+        cutorch.withDevice(i, function()
+            dpt:add(net:clone(), i)
+        end)
         if use_cudnn then
             dpt:threads(function()
                 local cudnn = require 'cudnn'
@@ -75,7 +74,6 @@ function util.makeDataParallelTable(model, use_cudnn, nGPU)
                 cudnn.benchmark = opt.cudnn_fastest,
                 opt.cudnn_benchmark
             end)
---            dpt:add(model:get(opt.nGPU), opt.gpus)
         end
         dpt.gradInput = nil
         model = dpt:cuda()

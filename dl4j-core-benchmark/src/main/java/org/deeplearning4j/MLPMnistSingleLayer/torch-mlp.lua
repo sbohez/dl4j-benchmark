@@ -14,15 +14,15 @@ require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/Utils/benchmark-ut
 cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
 cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
-cmd:option('-nGPU', 1, 'Number of gpus')
 cmd:option('-threads', 8, 'Number of threads to use on the computer')
 config = cmd:parse(arg)
 
 log = logroll.print_logger()
-log.level = logroll.INFO
+log.level = logroll.DEBUG
 
 opt = {
     gpu = config.gpu,
+    multi = config.multi,
     usecuDNN = false,
     max_epoch = 15,
     nExamples = 60000,
@@ -35,7 +35,7 @@ opt = {
     ninputs = 28*28,
     nhidden = 1000,
     multiply_input_factor = 1,
-    nGPU = config.nGPU,
+    nGPU = 1,
     learningRate = 0.006,
     weightDecay = 6e-3,
     nesterov = true,
@@ -44,13 +44,10 @@ opt = {
     threads = config.threads,
     logger = log.level == logroll.DEBUG,
     plot = false,--log.level == logroll.DEBUG,
-    gpus = {1},
     seed = 42,
-    devid = 1
+    devid = 1,
+    optimization = 'sgd'
 }
-
-if config.multi then opt.gpus = {1,2,3,4} end
-
 
 total_time = sys.clock()
 torch.manualSeed(opt.seed)
@@ -61,6 +58,7 @@ if opt.gpu then
     require 'cutorch'
     cutorch.setDevice(opt.devid)
     cutorch.manualSeed(opt.seed)
+    if opt.multi then opt.nGPU = cutorch.getDeviceCount() end
     print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name)
 end
 
@@ -76,6 +74,10 @@ classes = {'1','2','3','4','5','6','7','8','9','10'}
 geometry = {opt.height,opt.width}
 confusion = optim.ConfusionMatrix(classes)
 
+if opt.logger then
+    print("GPUS", opt.nGPU)
+    print("MODEL", model)
+end
 ------------------------------------------------------------
 log.debug('Load data...')
 
@@ -85,7 +87,6 @@ data_load_time = sys.clock() - data_load_time
 
 ------------------------------------------------------------
 log.debug('Build model...')
-
 model = nn.Sequential()
 model:add(nn.Reshape(opt.ninputs))
 model:add(nn.Linear(opt.ninputs,opt.nhidden))
@@ -93,7 +94,7 @@ model:add(nn.ReLU())
 model:add(nn.Linear(opt.nhidden,opt.noutputs))
 model = util.updateParams(model)
 
-if(opt.gpu) then model = util.convertCuda(model, false, opt.nGPU) end
+if opt.gpu then model = util.convertCuda(model, false, opt.nGPU) end
 
 parameters,gradParameters = model:getParameters()
 criterion = util.applyCuda(opt.gpu, nn.CrossEntropyCriterion())
@@ -104,15 +105,19 @@ criterion = util.applyCuda(opt.gpu, nn.CrossEntropyCriterion())
 function train(dataset)
     log.debug('Train model...')
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
-    if opt.nGPU > 1 then
-        dataset:synchronize()
+    if opt.multi then
+        cutorch.synchronize()
     end
+    local loss
+    local lossValue = 0
     for t=1,dataset.size(),opt.batchSize do
         -- disp moving progress for data load
         if opt.logger then xlua.progress(t, dataset:size()) end
         --create a minibatch
         local inputs = util.applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
         local targets = util.applyCuda(opt.gpu, torch.zeros(opt.batchSize))
+
+
         local k = 1
         for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
             -- load new sample
@@ -124,27 +129,26 @@ function train(dataset)
             targets[k] = target
             k = k + 1
         end
-        -- create a closure to evaluate f(x) and df(x)/dW i.e. dZ/dW
+
         local feval =  function(x)
             --get new parameters
             if x ~= parameters then parameters:copy(x) end
             --reset gradients
-            print("GRADPARAM**********", gradParameters)
-            if opt.nGPU == 1 then
-                gradParameters:zero()
-            end
+            model:zeroGradParameters()
             local output = model:forward(inputs)
             --average error of criterion
-            local loss =  criterion:forward(output,targets)
+            loss =  criterion:forward(output,targets)
             --estimate df/dW
             local df_do = criterion:backward(output,targets)
             model:backward(inputs,df_do)
             return loss, gradParameters
         end
-        optim.sgd(feval,parameters,optimState)
         if opt.nGPU > 1 then
             model:syncParameters()
         end
+--        if opt.multi then cutorch.syncronize() end
+        optim.sgd(feval,parameters,optimState)
+        lossVal = loss + lossVal
     end
     confusion:updateValids()
     trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100 }
@@ -154,7 +158,10 @@ function train(dataset)
         trainLogger:plot()
     end
     confusion:zero()
-    if opt.logger then print(confusion) end
+    if opt.logger then
+        print(confusion)
+        print(string.format('Loss: [%.2f]', lossValue))
+    end
     collectgarbage()
 end
 

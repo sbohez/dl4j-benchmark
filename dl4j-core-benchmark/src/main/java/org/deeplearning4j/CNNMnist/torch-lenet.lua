@@ -24,7 +24,6 @@ cmd:option('-cudnn', true, 'boolean flag to use cudnn for training')
 cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
 cmd:option('-threads', 8, 'Number of threads to use on the computer')
 config = cmd:parse(arg)
-if config.multi then print("Multi-GPU Not Implemented Yet") end
 
 local opt = {
     gpu = config.gpu,
