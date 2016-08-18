@@ -120,12 +120,21 @@ public class RunTrainingTests {
     protected int rnnTBPTTLength = 100;
 
     public static void main(String[] args) throws Exception {
+
+        //========================================
+        //For debugging MKL linking issues only
+        String mkl = System.getenv("MKL_THREADING_LAYER");
+        String ld = System.getenv("LD_PRELOAD");
+        System.out.println("MKL_THREADING_LAYER: " + mkl);
+        System.out.println("LD_PRELOAD: " + ld);
+        log.info("MKL_TREADING_LAYER: {}",mkl);
+        log.info("LD_PRELOAD: {}",ld);
+        //========================================
+
         new RunTrainingTests().entryPoint(args);
     }
 
     protected void entryPoint(String[] args) throws Exception {
-        TimeSource ts = TimeSourceProvider.getInstance();
-
         JCommander jcmdr = new JCommander(this);
         try {
             jcmdr.parse(args);

@@ -24,7 +24,7 @@
         <profile>
             <id>native</id>
             <activation>
-                <activeByDefault>false</activeByDefault>
+                <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
                 <dl4j.backend>deeplearning4j-core</dl4j.backend>
@@ -35,7 +35,7 @@
         <profile>
             <id>cuda</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
                 <nd4j.backend>nd4j-cuda-7.5</nd4j.backend>
@@ -55,9 +55,9 @@
             <properties>
                 <spark.scope>provided</spark.scope>
             </properties>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
+            <!--<activation>-->
+                <!--<activeByDefault>true</activeByDefault>-->
+            <!--</activation>-->
         </profile>
 
         <!-- For building jar for running Spark local: "-P sparklocal"-->
@@ -66,9 +66,9 @@
             <properties>
                 <spark.scope>compile</spark.scope>
             </properties>
-            <!--<activation>-->
-                <!--<activeByDefault>true</activeByDefault>-->
-            <!--</activation>-->
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
         </profile>
     </profiles>
 
