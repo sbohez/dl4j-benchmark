@@ -3,7 +3,11 @@
 -- Reference Code:
 --      https://github.com/torch/demos/blob/master/train-a-digit-classifier/train-on-mnist.lua
 --      https://github.com/eladhoffer/ImageNet-Training/blob/master/Main.lua
+--      https://github.com/soumith/imagenet-multiGPU.torch
 -- Reference Xaviar: https://github.com/e-lab/torch-toolbox/blob/master/Weight-init/weight-init.lua#L19
+
+-- Note kept global variables to make it easeir to copy and debug in interactive shell
+
 
 require 'torch'
 require 'nn'
@@ -11,14 +15,14 @@ require 'optim'
 require 'logroll'
 require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/Utils/benchmark-util'
 
+log = logroll.print_logger()
+log.level = logroll.INFO
+
 cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
 cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
 cmd:option('-threads', 8, 'Number of threads to use on the computer')
 config = cmd:parse(arg)
-
-log = logroll.print_logger()
-log.level = logroll.DEBUG
 
 opt = {
     gpu = config.gpu,
@@ -74,10 +78,6 @@ classes = {'1','2','3','4','5','6','7','8','9','10'}
 geometry = {opt.height,opt.width}
 confusion = optim.ConfusionMatrix(classes)
 
-if opt.logger then
-    print("GPUS", opt.nGPU)
-    print("MODEL", model)
-end
 ------------------------------------------------------------
 log.debug('Load data...')
 
@@ -99,25 +99,27 @@ if opt.gpu then model = util.convertCuda(model, false, opt.nGPU) end
 parameters,gradParameters = model:getParameters()
 criterion = util.applyCuda(opt.gpu, nn.CrossEntropyCriterion())
 
+if opt.logger then
+    print("GPUS", opt.nGPU)
+    print("MODEL", model)
+end
+
 ------------------------------------------------------------
 --Train model
 
 function train(dataset)
-    log.debug('Train model...')
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
     if opt.multi then
         cutorch.synchronize()
     end
     local loss
-    local lossValue = 0
+    local lossVal = 0
     for t=1,dataset.size(),opt.batchSize do
         -- disp moving progress for data load
         if opt.logger then xlua.progress(t, dataset:size()) end
         --create a minibatch
         local inputs = util.applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
         local targets = util.applyCuda(opt.gpu, torch.zeros(opt.batchSize))
-
-
         local k = 1
         for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
             -- load new sample
@@ -129,7 +131,6 @@ function train(dataset)
             targets[k] = target
             k = k + 1
         end
-
         local feval =  function(x)
             --get new parameters
             if x ~= parameters then parameters:copy(x) end
@@ -160,7 +161,7 @@ function train(dataset)
     confusion:zero()
     if opt.logger then
         print(confusion)
-        print(string.format('Loss: [%.2f]', lossValue))
+        print(string.format('Loss: [%.2f]', lossVal))
     end
     collectgarbage()
 end
@@ -204,8 +205,9 @@ function test(dataset)
 end
 
 -- Run program
-train_time = sys.clock()
+log.debug('Train model...')
 model:training()
+train_time = sys.clock()
 for epoch = 1,opt.max_epoch do
     log.debug('<trainer> on training set:')
     log.debug("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')

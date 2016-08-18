@@ -66,15 +66,15 @@ function util.makeDataParallelTable(model, use_cudnn, nGPU)
         cutorch.withDevice(i, function()
             dpt:add(net:clone(), i)
         end)
-        if use_cudnn then
-            dpt:threads(function()
-                local cudnn = require 'cudnn'
-                cudnn.verbose = false
-                cudnn.fastest,
-                cudnn.benchmark = opt.cudnn_fastest,
-                opt.cudnn_benchmark
-            end)
-        end
+--        if use_cudnn then
+--            dpt:threads(function()
+--                local cudnn = require 'cudnn'
+--                cudnn.verbose = false
+--                cudnn.fastest,
+--                cudnn.benchmark = opt.cudnn_fastest,
+--                opt.cudnn_benchmark
+--            end)
+--        end
         dpt.gradInput = nil
         model = dpt:cuda()
     end
