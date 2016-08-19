@@ -13,7 +13,7 @@ import tensorflow as tf
 
 class MLP():
 
-    def __init__(self, images_placeholder, **config):
+    def __init__(self, images_placeholder, config):
         self.batch_size = config['batch_size']
         self.num_classes = config['num_classes']
         self.height = config['height']
@@ -27,7 +27,7 @@ class MLP():
         self.dtype = config['dtype']
         self.device = config['device']
         self.data_format = config['data_format']
-        self.image_placeholder = images_placeholder
+        self.images_placeholder = images_placeholder
 
     def init_bias(self, shape):
         with tf.device(self.device):

@@ -52,7 +52,7 @@ function mlp.build_model()
     return util.updateParams(model)
 end
 
-function lenet.define_loss(gpu)
-    return util.applyCuda(gpu, nn.CrossEntropyCriterion())
+function lenet.define_loss()
+    return nn.CrossEntropyCriterion()
 end
 

@@ -36,7 +36,7 @@ class Lenet():
         self.device = config['device']
         self.data_format = config['data_format']
         self.one_hot = config['one_hot']
-        self.image_placeholder = images_placeholder
+        self.images_placeholder = images_placeholder
 
 
     def init_bias(self, shape):

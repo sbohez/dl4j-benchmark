@@ -1,90 +1,67 @@
+-- Torch7 MLP
 --
--- Main Class
--- Run Lenet or MLP
---
+-- Reference Code:
+--      https://github.com/torch/demos/blob/master/train-a-digit-classifier/train-on-mnist.lua
+--      https://github.com/eladhoffer/ImageNet-Training/blob/master/Main.lua
+--      https://github.com/soumith/imagenet-multiGPU.torch
+-- Reference Xaviar: https://github.com/e-lab/torch-toolbox/blob/master/Weight-init/weight-init.lua#L19
+
+-- Note kept global variables to make it easeir to copy and debug in interactive shell
+
+
 require 'torch'
 require 'nn'
-require 'dl4j-core-benchmark/src/main/resources/torch-data/dataset-mnist'
 require 'optim'
 require 'logroll'
-require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/CNNMnist/torch-lenet'
-require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/MLPMnistSingleLayer/torch-mlp'
+require 'dl4j-core-benchmark/src/main/resources/torch-data/dataset-mnist'
 
 log = logroll.print_logger()
 log.level = logroll.INFO
 
 cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
-cmd:option('-cudnn', true, 'boolean flag to use cudnn for training')
 cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
 cmd:option('-threads', 8, 'Number of threads to use on the computer')
-cmd:option('-model_type', 'mlp', 'Which model to run')
 config = cmd:parse(arg)
-
-
-model_config = { lenet = {
-        usecuDNN = config.cudnn,
-        learningRate = 1e-2,
-        weightDecay = 5e-4,
-        nesterov = true,
-        momentum =  0.9,
-        dampening = 0,
-    }, mlp = {
-        usecuDNN = false,
-        learningRate = 0.006,
-        weightDecay = 6e-3,
-        nesterov = true,
-        momentum =  0.9,
-        dampening = 0,
-    }
-}
 
 opt = {
     gpu = config.gpu,
     multi = config.multi,
+    usecuDNN = false,
     max_epoch = 15,
-    nExamples = 60000 ,
+    nExamples = 60000,
     nTestExamples = 10000,
     batchSize = 100,
-    testBatchSize = 100,
     noutputs = 10,
     channels = 1,
     height = 28,
     width = 28,
     ninputs = 28*28,
+    nhidden = 1000,
+    multiply_input_factor = 1,
     nGPU = 1,
+    learningRate = 0.006,
+    weightDecay = 6e-3,
+    nesterov = true,
+    momentum =  0.9,
+    dampening = 0,
+    threads = config.threads,
+    logger = log.level == logroll.DEBUG,
+    plot = false,--log.level == logroll.DEBUG,
+    seed = 42,
+    devid = 1,
+    optimization = 'sgd',
     cudnn_fastest = true,
     cudnn_deterministic = false,
     cudnn_benchmark = true,
     flatten = true,
     useNccl = true, -- Nvidia's library bindings for parallel table
     save = "src/main/resources/torch-data/",
-    threads = config.threads,
-    logger = log.level == logroll.DEBUG,
-    plot = false,
-    seed = 42,
-    devid = 1,
-    optimization = 'sgd'
 
 }
-
-if config.model_type == 'mlp' then
-    model_config = model_config.lenet
-else
-    model_config = model_config.lenet
-end
-
-optimState = {
-    learningRate = model_config.learningRate,
-    weightDecay = model_config.weightDecay,
-    nesterov = model_config.nesterov,
-    momentum =  model_config.momentum,
-    dampening = model_config.dampening
-}
-
 
 total_time = sys.clock()
-torch.manualSeed(42)
+torch.manualSeed(opt.seed)
 torch.setnumthreads(opt.threads)
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -96,29 +73,25 @@ if opt.gpu then
     print('Running on device: ' .. cutorch.getDeviceProperties(cutorch.getDevice()).name)
 end
 
+optimState = {
+    learningRate = opt.learningRate,
+    weightDecay = opt.weightDecay,
+    nesterov = opt.nesterov,
+    momentum =  opt.momentum,
+    dampening = opt.dampening
+}
+
 classes = {'1','2','3','4','5','6','7','8','9','10'}
-geometry = {opt.height, opt.width}
+geometry = {opt.height,opt.width}
 confusion = optim.ConfusionMatrix(classes)
+
+
 
 -- log results to files
 trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
 testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
-------------------------------------------------------------
-
-function printTime(time_type, time)
-    local min = math.floor(time/60)
-    local partialSec = min - time/60
-    local sec = 0
-    if partialSec > 0 then
-        sec = math.floor(partialSec * 60)
-    end
-    local milli = time * 1000
-    print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
-end
-
 
 function loadData(numExamples, numTestExamples, geometry)
-    log.debug('Load data...')
     trainData = mnist.loadTrainSet(numExamples, geometry)
     trainData:normalizeGlobal()
     testData = mnist.loadTestSet(numTestExamples, geometry)
@@ -128,6 +101,34 @@ end
 
 function applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
 
+function w_init_xavier(fan_in, fan_out)
+    return math.sqrt(2/(fan_in + fan_out))
+end
+
+function w_init_xavier_caffe(fan_in, fan_out)
+    return math.sqrt(1/fan_in)
+end
+
+function w_init_xavier_dl4j(fan_in, fan_out)
+    return math.sqrt(1/(fan_in + fan_out))
+end
+
+function updateParams(model)
+    for i=1, #model.modules do
+        method = w_init_xavier_dl4j
+        local m = model.modules[i]
+        if m.__typename == 'nn.SpatialConvolutionMM' then
+            m:reset(method(m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW))
+            m.bias = nil
+            m.gradBias = nil
+        elseif m.__typename == 'nn.Linear' then
+            m:reset(method(m.weight:size(2), m.weight:size(1)))
+            m.bias:zero()
+        end
+    end
+    return model
+end
+
 function makeDataParallelTable(model, use_cudnn, nGPU)
     local net = model
     local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
@@ -135,15 +136,15 @@ function makeDataParallelTable(model, use_cudnn, nGPU)
         cutorch.withDevice(i, function()
             dpt:add(net:clone(), i)
         end)
---        if use_cudnn then
---            dpt:threads(function()
---                local cudnn = require 'cudnn'
---                cudnn.verbose = false
---                cudnn.fastest,
---                cudnn.benchmark = opt.cudnn_fastest,
---                opt.cudnn_benchmark
---            end)
---        end
+        --        if use_cudnn then
+        --            dpt:threads(function()
+        --                local cudnn = require 'cudnn'
+        --                cudnn.verbose = false
+        --                cudnn.fastest,
+        --                cudnn.benchmark = opt.cudnn_fastest,
+        --                opt.cudnn_benchmark
+        --            end)
+        --        end
         dpt.gradInput = nil
         model = dpt:cuda()
     end
@@ -174,15 +175,58 @@ function convertCuda(model, use_cudnn, nGPU)
 end
 
 
-function train(dataset, model, criterion)
-    if opt.multi then cutorch.synchronize() end
+function printTime(time_type, time)
+    local min = math.floor(time/60)
+    local partialSec = min - time/60
+    local sec = 0
+    if partialSec > 0 then
+        sec = math.floor(partialSec * 60)
+    end
+    local milli = time * 1000
+    print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
+end
+
+
+------------------------------------------------------------
+log.debug('Load data...')
+
+data_load_time = sys.clock()
+trainData, testData =  loadData(opt.nExamples, opt.nTestExamples, geometry)
+data_load_time = sys.clock() - data_load_time
+
+------------------------------------------------------------
+log.debug('Build model...')
+model = nn.Sequential()
+model:add(nn.Reshape(opt.ninputs))
+model:add(nn.Linear(opt.ninputs,opt.nhidden))
+model:add(nn.ReLU())
+model:add(nn.Linear(opt.nhidden,opt.noutputs))
+model = updateParams(model)
+
+if opt.gpu then model = convertCuda(model, false, opt.nGPU) end
+
+parameters,gradParameters = model:getParameters()
+criterion = applyCuda(opt.gpu, nn.CrossEntropyCriterion())
+
+if opt.logger then
+    print("GPUS", opt.nGPU)
+    print("MODEL", model)
+end
+
+------------------------------------------------------------
+--Train model
+
+function train(dataset)
+    -- set model to training mode (for modules that differ in training and testing, like Dropout)
+    if opt.multi then
+        cutorch.synchronize()
+    end
     local loss
     local lossVal = 0
-    --    loops from 1 to full dataset size by batchsize
-    for t = 1,dataset.size(), opt.batchSize do
+    for t=1,dataset.size(),opt.batchSize do
         -- disp moving progress for data load
         if opt.logger then xlua.progress(t, dataset:size()) end
-        -- create mini batch
+        --create a minibatch
         local inputs = applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
         local targets = applyCuda(opt.gpu, torch.zeros(opt.batchSize))
         local k = 1
@@ -196,18 +240,23 @@ function train(dataset, model, criterion)
             targets[k] = target
             k = k + 1
         end
-        -- create closure to evaluate f(X) and df/dX
-        local feval = function(x)
+        local feval =  function(x)
+            --get new parameters
             if x ~= parameters then parameters:copy(x) end
+            --reset gradients
             model:zeroGradParameters()
-            local outputs = model:forward(inputs)
-            loss = criterion:forward(outputs, targets)
-            local df_do = criterion:backward(outputs, targets)
-            model:backward(inputs, df_do)
-            -- update confusion
+            local output = model:forward(inputs)
+            --average error of criterion
+            loss =  criterion:forward(output,targets)
+            --estimate df/dW
+            local df_do = criterion:backward(output,targets)
+            model:backward(inputs,df_do)
             return loss, gradParameters
         end
-        if opt.nGPU > 1 then model:syncParameters() end
+        if opt.nGPU > 1 then
+            model:syncParameters()
+        end
+        --        if opt.multi then cutorch.syncronize() end
         optim.sgd(feval,parameters,optimState)
         lossVal = loss + lossVal
     end
@@ -226,18 +275,21 @@ function train(dataset, model, criterion)
     collectgarbage()
 end
 
+------------------------------------------------------------
+--Evaluate model
 
 function test(dataset)
     log.debug('Evaluate model...')
+    --     test over given dataset
     model:evaluate()
-    for t = 1,dataset:size(),opt.testBatchSize do
+    for t = 1,dataset:size(),opt.batchSize do
+        -- disp moving progress for data load
+        if opt.logger then xlua.progress(t, dataset:size()) end
         -- create mini batch
         local inputs = applyCuda(opt.gpu, torch.Tensor(opt.batchSize,opt.channels,opt.height,opt.width))
         local targets = applyCuda(opt.gpu, torch.zeros(opt.batchSize))
         local k = 1
-        for i = t,math.min(t+opt.testBatchSize-1,opt.nTestExamples) do
-            -- disp moving progress for data load
-            if opt.logger then xlua.progress(t, dataset:size()) end
+        for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
             -- load new sample
             local sample = dataset[i]
             local input = sample[1]:clone():resize(opt.channels,opt.height,opt.width)
@@ -261,39 +313,14 @@ function test(dataset)
     print('Accuracy: ', confusion.totalValid * 100)
 end
 
-
-------------------------------------------------------------
--- Run
-
-data_load_time = sys.clock()
-trainData, testData =  loadData(opt.nExamples, opt.nTestExamples, geometry)
-data_load_time = sys.clock() - data_load_time
-
-log.debug('Build model...')
-if config.model_type == 'mlp' then
-    model = lenet.build_model()
-    criterion = lenet.define_loss()
-else
-    model = mlp.build_model()
-    criterion = mlp.define_loss()
-end
-
-if opt.gpu then model = convertCuda(model, opt.usecuDNN, opt.nGPU) end
-parameters,gradParameters = model:getParameters()
-criterion = applyCuda(opt.gpu, criterion)
-
-if opt.logger then
-    print("GPUS", opt.nGPU)
-    print("MODEL", model)
-end
-
+-- Run program
 log.debug('Train model...')
 model:training()
 train_time = sys.clock()
 for epoch = 1,opt.max_epoch do
     log.debug('<trainer> on training set:')
     log.debug("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
-    train(trainData, model, criterion)
+    train(trainData)
 end
 train_time = sys.clock() - train_time
 

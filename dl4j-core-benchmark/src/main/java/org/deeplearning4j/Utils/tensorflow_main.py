@@ -11,8 +11,8 @@ from tensorflow.examples.tutorials.mnist import mnist
 from tensorflow.examples.tutorials.mnist import input_data
 from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
-import CNNMnist.tensorflow_lenet as Lenet
-import MLPMnistSingleLayer.tensorflow_mlp as MLP
+import CNNMnist.tensorflow_lenet as lenet
+import MLPMnistSingleLayer.tensorflow_mlp as mlp
 
 
 DTYPE = tf.float32
@@ -188,13 +188,14 @@ def average_gradients(tower_grads):
 def multi_train(model, labels_placeholder):
     global_step = tf.get_variable('global_step', [],
                                   initializer=tf.constant_initializer(0), trainable=False)
-    opt = model.setup_optimizer()
+    model.setup_optimizer()
+    opt = model.optimizer
     tower_grads = []
     for i in xrange(FLAGS.num_gpus):
         with tf.device('/gpu:%d' % i):
             with tf.name_scope('%s_%d' % (TOWER_NAME, i)) as scope:
-                logits = model.model
-                cross_entropy = logits.define_loss(labels_placeholder)
+                model.define_loss(labels_placeholder)
+                cross_entropy = model.loss
                 tf.add_to_collection("losses", cross_entropy)
                 tf.add_n(tf.get_collection('losses'), name='total_loss')
                 loss = tower_loss(scope)
@@ -275,10 +276,10 @@ def run():
         images_placeholder, labels_placeholder = placeholder_inputs(FLAGS.one_hot, FLAGS.height*FLAGS.width*FLAGS.channels, FLAGS.num_classes)
         LOGGER.debug("Build Model")
         if FLAGS.model_type == 'lenet':
-            model = Lenet(images_placeholder, model_config['lenet'])
+            model = lenet.Lenet(images_placeholder, model_config['lenet'])
             model.build_model()
         else:
-            model = MLP(images_placeholder, model_config['mlp'])
+            model = mlp.MLP(images_placeholder, model_config['mlp'])
             model.build_model()
 
         sess, model, train_time = train(model, images_placeholder, labels_placeholder, data_sets.train)
