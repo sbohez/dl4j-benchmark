@@ -25,7 +25,7 @@ public class Dl4j_LenetMnist {
     private static final Logger log = LoggerFactory.getLogger(Dl4j_LenetMnist.class);
 
     // values to pass in from command line when compiled, esp running remotely
-    @Option(name="--numGPUWorkers",usage="How many workers to use for multiple GPUs.",aliases = "-nGW")
+    @Option(name="--numGPUWorkers",usage="How many workers to use for multiple GPUs.",aliases = "-nGPU")
     // Pass in 8 for 4 GPUs
     public int numGPUWorkers = 0;
     @Option(name="--halfPrecision",usage="Apply half precision for GPUs.",aliases = "-ha")
