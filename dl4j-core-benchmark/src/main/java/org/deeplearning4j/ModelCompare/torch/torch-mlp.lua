@@ -43,16 +43,18 @@ function updateParams(model)
     return model
 end
 
-function mlp.build_model()
-    model = nn.Sequential()
-    model:add(nn.Reshape(opt.ninputs))
-    model:add(nn.Linear(opt.ninputs,opt.nhidden))
-    model:add(nn.ReLU())
-    model:add(nn.Linear(opt.nhidden,opt.noutputs))
-    return util.updateParams(model)
+function mlp.build_model(numInputs, numClasses)
+    local numHidden = 1000
+
+    local model = nn.Sequential()
+    model:add(nn.Reshape(numInputs))
+    model:add(nn.Linear(numInputs,numHidden))
+    model:add(nn.ReLU(true))
+    model:add(nn.Linear(numHidden,numClasses))
+    return updateParams(model)
 end
 
-function lenet.define_loss()
+function mlp.define_loss()
     return nn.CrossEntropyCriterion()
 end
 

@@ -9,7 +9,7 @@ Reference:
 
 A very simple MNIST classifer.
 """
-import tensorflow as tf
+import org.deeplearning4j.ModelCompare.tensorflow as tf
 
 class MLP():
 

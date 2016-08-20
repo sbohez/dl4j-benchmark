@@ -23,29 +23,29 @@ Main packages included for comparison so far...
 * Setup packages: add to pom.xml
 * Set GPU: change in pom file under nd4j-backends (native for cpu and cuda-7.5 for gpu) 
 * Compile: mvn clean install -P (native or cuda)
-* Run: ./shell_script/dl4j_train_*.sh
 
 **Caffe (vr3)**
 * Install: http://caffe.berkeleyvision.org/installation.html
 * Set GPU: change in solver prototext under solver_mode as either CPU or GPU
 * Pass in -gpu # for the number of GPUs to use or all for all
-* Run: ./shell_script/caffe_train_*.sh
 
 **Tensorflow(v0.9.0)**
 * Install: https://www.tensorflow.org/versions/r0.9/get_started/os_setup.html
 * Setup packages: pip install \<*filename*>
 * cuDNN required for CNN models and cuDNN > 4 requires to compile from source
 * Checkout for configuration fixes: https://stackoverflow.com/questions/37663064/cudnn-compile-configuration-in-tensorflow
-* Run: ./shell_script/tensorflow_train_*.sh
 
 **Torch (v7)**
 * Install: http://torch.ch/docs/getting-started.html 
 * Setup packages: luarocks install \<*filename*>
 * Utilize cutorch, cunn, cudnn packages for cuda backend integration 
 * cuDNN required for CNN models
-* Run: ./shell_script/torch_train_*.sh
 
-If multiple GPUs, control how many used by adding 'export CUDA_VISIBLE_DEVICES=' to .bashrc or .bash_profile and setting empty for CPU and 0,1,2,3 for GPUs (0 if just one and 0,1 if just two) 
+To run any of these examples, configure the system to the platform, install this repo and run:
+
+        ./dl4j-core-benchmarks/scripts/model_compare_.sh
+
+Note: If multiple GPUs, control how many used by adding 'export CUDA_VISIBLE_DEVICES=' to .bashrc or .bash_profile and setting empty for CPU and 0,1,2,3 for GPUs (0 if just one and 0,1 if just two) 
 
 #### Benchmark System
 Running benchmarks on following system setup:

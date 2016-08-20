@@ -11,9 +11,9 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.Models.CifarModels;
-import org.deeplearning4j.Models.CifarModeEnum;
-import org.deeplearning4j.Utils.BenchmarkUtil;
+import org.deeplearning4j.Cifar10.CifarModels;
+import org.deeplearning4j.Cifar10.CifarModeEnum;
+import org.deeplearning4j.ModelCompare.dl4j.Dl4j_1Main;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -220,10 +220,10 @@ public class Dl4j_Cifar10 {
         totalTime = System.currentTimeMillis() - totalTime;
 
         log.info("****************Example finished********************");
-        BenchmarkUtil.printTime("Data", dataLoadTime);
-        BenchmarkUtil.printTime("Train", trainTime);
-        BenchmarkUtil.printTime("Test", testTime);
-        BenchmarkUtil.printTime("Total", totalTime);
+        Dl4j_1Main.printTime("Data", dataLoadTime);
+        Dl4j_1Main.printTime("Train", trainTime);
+        Dl4j_1Main.printTime("Test", testTime);
+        Dl4j_1Main.printTime("Total", totalTime);
 
     }
 

@@ -7,9 +7,11 @@ require 'nn'
 require 'dl4j-core-benchmark/src/main/resources/torch-data/dataset-mnist'
 require 'optim'
 require 'logroll'
-require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/CNNMnist/torch-lenet'
-require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/MLPMnistSingleLayer/torch-mlp'
+require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/ModelCompare/torch/torch-lenet'
+require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/ModelCompare/torch/torch-mlp'
 
+------------------------------------------------------------
+-- Setup Variables
 log = logroll.print_logger()
 log.level = logroll.INFO
 
@@ -47,11 +49,11 @@ opt = {
     nTestExamples = 10000,
     batchSize = 100,
     testBatchSize = 100,
-    noutputs = 10,
+    numOutputs = 10,
     channels = 1,
     height = 28,
     width = 28,
-    ninputs = 28*28,
+    numInputs = 28*28,
     nGPU = 1,
     cudnn_fastest = true,
     cudnn_deterministic = false,
@@ -103,7 +105,9 @@ confusion = optim.ConfusionMatrix(classes)
 -- log results to files
 trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
 testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
+
 ------------------------------------------------------------
+-- Support Functions
 
 function printTime(time_type, time)
     local min = math.floor(time/60)
@@ -116,39 +120,7 @@ function printTime(time_type, time)
     print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
 end
 
-
-function loadData(numExamples, numTestExamples, geometry)
-    log.debug('Load data...')
-    trainData = mnist.loadTrainSet(numExamples, geometry)
-    trainData:normalizeGlobal()
-    testData = mnist.loadTestSet(numTestExamples, geometry)
-    testData:normalizeGlobal()
-    return trainData, testData
-end
-
 function applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
-
-function makeDataParallelTable(model, use_cudnn, nGPU)
-    local net = model
-    local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
-    for i = 1, nGPU do
-        cutorch.withDevice(i, function()
-            dpt:add(net:clone(), i)
-        end)
---        if use_cudnn then
---            dpt:threads(function()
---                local cudnn = require 'cudnn'
---                cudnn.verbose = false
---                cudnn.fastest,
---                cudnn.benchmark = opt.cudnn_fastest,
---                opt.cudnn_benchmark
---            end)
---        end
-        dpt.gradInput = nil
-        model = dpt:cuda()
-    end
-    return model
-end
 
 function convertCuda(model, use_cudnn, nGPU)
     require 'cunn'
@@ -173,6 +145,44 @@ function convertCuda(model, use_cudnn, nGPU)
     return model
 end
 
+function makeDataParallelTable(model, use_cudnn, nGPU)
+    local net = model
+    local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
+    for i = 1, nGPU do
+        cutorch.withDevice(i, function()
+            dpt:add(net:clone(), i)
+        end)
+        --        if use_cudnn then
+        --            dpt:threads(function()
+        --                local cudnn = require 'cudnn'
+        --                cudnn.verbose = false
+        --                cudnn.fastest,
+        --                cudnn.benchmark = opt.cudnn_fastest,
+        --                opt.cudnn_benchmark
+        --            end)
+        --        end
+        dpt.gradInput = nil
+        model = dpt:cuda()
+    end
+    return model
+end
+
+
+------------------------------------------------------------
+-- Load Data
+
+function loadData(numExamples, numTestExamples, geometry)
+    log.debug('Load data...')
+    trainData = mnist.loadTrainSet(numExamples, geometry)
+    trainData:normalizeGlobal()
+    testData = mnist.loadTestSet(numTestExamples, geometry)
+    testData:normalizeGlobal()
+    return trainData, testData
+end
+
+
+------------------------------------------------------------
+-- Train
 
 function train(dataset, model, criterion)
     if opt.multi then cutorch.synchronize() end
@@ -226,6 +236,8 @@ function train(dataset, model, criterion)
     collectgarbage()
 end
 
+------------------------------------------------------------
+-- Evaluate
 
 function test(dataset)
     log.debug('Evaluate model...')
@@ -270,17 +282,17 @@ trainData, testData =  loadData(opt.nExamples, opt.nTestExamples, geometry)
 data_load_time = sys.clock() - data_load_time
 
 log.debug('Build model...')
-if config.model_type == 'mlp' then
-    model = lenet.build_model()
-    criterion = lenet.define_loss()
+if config.model_type == 'lenet' then
+    model = lenet.build_model(opt.channels, opt.numOutputs)
+    criterion = applyCuda(opt.gpu, lenet.define_loss())
 else
-    model = mlp.build_model()
-    criterion = mlp.define_loss()
+    model = mlp.build_model(opt.numInputs, opt.numOutputs)
+    criterion = applyCuda(opt.gpu, mlp.define_loss())
 end
 
 if opt.gpu then model = convertCuda(model, opt.usecuDNN, opt.nGPU) end
 parameters,gradParameters = model:getParameters()
-criterion = applyCuda(opt.gpu, criterion)
+
 
 if opt.logger then
     print("GPUS", opt.nGPU)

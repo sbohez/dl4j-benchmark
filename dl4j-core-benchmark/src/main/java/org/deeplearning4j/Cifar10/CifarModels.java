@@ -1,4 +1,4 @@
-package org.deeplearning4j.Models;
+package org.deeplearning4j.Cifar10;
 
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.LearningRatePolicy;

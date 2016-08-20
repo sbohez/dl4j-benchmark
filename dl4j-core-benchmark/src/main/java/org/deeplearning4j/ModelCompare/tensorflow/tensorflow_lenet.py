@@ -17,7 +17,7 @@ MNIST tutorial: https://tensorflow.org/tutorials/mnist/tf/index.html
 # cuDNN required for CNNs on GPU but hard to compile above 4
 # To maintain model in session prevents from setting different test batch size from training like other platform examples on GPU?
 
-import tensorflow as tf
+import org.deeplearning4j.ModelCompare.tensorflow as tf
 
 class Lenet():
 

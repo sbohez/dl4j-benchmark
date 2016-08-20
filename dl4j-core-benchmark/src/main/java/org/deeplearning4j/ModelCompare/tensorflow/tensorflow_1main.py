@@ -2,13 +2,13 @@
 
 import os
 import sys
-import tensorflow as tf
+import org.deeplearning4j.ModelCompare.tensorflow as tf
 from six.moves import xrange
 import logging
 import re
 import time
-from tensorflow.examples.tutorials.mnist import mnist
-from tensorflow.examples.tutorials.mnist import input_data
+from org.deeplearning4j.ModelCompare.tensorflow.examples.tutorials.mnist import mnist
+from org.deeplearning4j.ModelCompare.tensorflow.examples.tutorials.mnist import input_data
 from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 import CNNMnist.tensorflow_lenet as lenet

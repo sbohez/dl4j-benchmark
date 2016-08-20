@@ -15,6 +15,7 @@ require 'nn'
 lenet = {}
 
 ------------------------------------------------------------
+
 function w_init_xavier(fan_in, fan_out)
     return math.sqrt(2/(fan_in + fan_out))
 end
@@ -43,21 +44,24 @@ function updateParams(model)
     return model
 end
 
-function lenet.build_model()
-    model = nn.Sequential()
+function lenet.build_model(numInputs, numClasses)
+    local ccn1depth = 20
+    local ccn2depth = 50
+    local ffn1depth = 500
+    local model = nn.Sequential()
     -- stage 1 : mean suppresion -> filter bank -> squashing -> max pooling
-    model:add(nn.SpatialConvolutionMM(1, 20, 5, 5))
+    model:add(nn.SpatialConvolutionMM(numInputs, ccn1depth, 5, 5))
     model:add(nn.Identity())
     model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
     -- stage 2 : mean suppresion -> filter bank -> squashing -> max pooling
-    model:add(nn.SpatialConvolutionMM(20, 50, 5, 5))
+    model:add(nn.SpatialConvolutionMM(ccn1depth, ccn2depth, 5, 5))
     model:add(nn.Identity())
     model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
     -- stage 3 : standard 2-layer MLP:
-    model:add(nn.Reshape(50*4*4))
-    model:add(nn.Linear(50*4*4, 500))
+    model:add(nn.Reshape(ccn2depth*4*4))
+    model:add(nn.Linear(ccn2depth*4*4, ffn1depth))
     model:add(nn.ReLU(true))
-    model:add(nn.Linear(500, #classes))
+    model:add(nn.Linear(ffn1depth, numClasses))
     return updateParams(model)
 end
 
