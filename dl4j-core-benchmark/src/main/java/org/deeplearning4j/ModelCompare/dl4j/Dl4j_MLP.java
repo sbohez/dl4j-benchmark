@@ -46,7 +46,6 @@ public class Dl4j_MLP {
         this.momentum = momentum;
         this.l2 = l2;
         this.seed = seed;
-
     }
 
     public MultiLayerNetwork build_model() {

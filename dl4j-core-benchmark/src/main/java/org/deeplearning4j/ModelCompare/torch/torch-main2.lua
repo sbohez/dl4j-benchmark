@@ -229,7 +229,7 @@ else
 end
 model = updateParams(model)
 
-if opt.gpu then model = convertCuda(model, false, opt.nGPU) end
+if opt.gpu then model = convertCuda(model, opt.nGPU) end
 
 parameters,gradParameters = model:getParameters()
 criterion = applyCuda(opt.gpu, nn.CrossEntropyCriterion())
@@ -346,7 +346,6 @@ data_load_time = sys.clock()
 trainData, testData =  loadData(opt.nExamples, opt.nTestExamples, geometry)
 data_load_time = sys.clock() - data_load_time
 
-if opt.gpu then model = convertCuda(model, opt.nGPU) end
 parameters,gradParameters = model:getParameters()
 
 if opt.logger then

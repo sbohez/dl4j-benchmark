@@ -9,7 +9,7 @@ Reference:
 
 A very simple MNIST classifer.
 """
-import org.deeplearning4j.ModelCompare.tensorflow as tf
+import tensorflow as tf
 
 class MLP():
 
@@ -18,7 +18,7 @@ class MLP():
         self.num_classes = config['num_classes']
         self.height = config['height']
         self.width = config['width']
-        self.channel = config['channel']
+        self.channels = config['channels']
         self.learning_rate = config['learning_rate']
         self.momentum = config['momentum']
         self.l2 = config['l2']
@@ -46,7 +46,7 @@ class MLP():
         """
         hidden1_units = 1000
         with tf.variable_scope('hidden1'):
-            weights = self.init_weights([self.height*self.width*self.channel, hidden1_units])
+            weights = self.init_weights([self.height*self.width*self.channels, hidden1_units])
             biases = self.init_bias([hidden1_units])
             hidden1 = tf.nn.relu(tf.matmul(self.images_placeholder, weights) + biases)
         with tf.variable_scope('softmax_linear'):

@@ -52,7 +52,6 @@ public class Dl4j_Lenet {
         int ccn1Depth = 20;
         int ccn2Depth = 50;
         int ffn1Depth = 500;
-
         MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
                 .seed(seed)
                 .iterations(1)

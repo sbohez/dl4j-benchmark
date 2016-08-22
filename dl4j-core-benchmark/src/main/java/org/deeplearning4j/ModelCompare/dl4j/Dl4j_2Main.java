@@ -3,7 +3,16 @@ package org.deeplearning4j.ModelCompare.dl4j;
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
+import org.deeplearning4j.nn.api.OptimizationAlgorithm;
+import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.Updater;
+import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
+import org.deeplearning4j.nn.conf.layers.DenseLayer;
+import org.deeplearning4j.nn.conf.layers.OutputLayer;
+import org.deeplearning4j.nn.conf.layers.SubsamplingLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.parallelism.ParallelWrapper;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -11,6 +20,7 @@ import org.kohsuke.args4j.Option;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,8 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  */
-public class Dl4j_1Main {
-    private static Logger log = LoggerFactory.getLogger(Dl4j_1Main.class);
+public class Dl4j_2Main {
+    private static Logger log = LoggerFactory.getLogger(Dl4j_2Main.class);
 
     // values to pass in from command line when compiled, esp running remotely
     @Option(name="--modelType",usage="Model type.",aliases = "-mT")
@@ -33,7 +43,7 @@ public class Dl4j_1Main {
 
 
     protected final int seed = 42;
-    protected final int nCores = 32;
+    protected final int nCores = 32; // TODO use for loading data async - there was an issue before
     public final static int buffer = 24;
     public final static int avgFrequency = 3;
 
@@ -48,7 +58,7 @@ public class Dl4j_1Main {
     protected double l2;
 
     public void setVaribales() {
-        if(modelType.equals("mlp")) {
+        if (modelType == "mlp") {
             height = 28;
             width = 28;
             channels = 1;
@@ -77,6 +87,14 @@ public class Dl4j_1Main {
                 TimeUnit.MILLISECONDS.toSeconds(ms) -
                         TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(ms)),
                 ms);
+    }
+
+    private ConvolutionLayer conv5x5(String name, int nIn, int out) {
+        return new ConvolutionLayer.Builder(new int[]{5, 5}, new int[]{1, 1}).nIn(nIn).nOut(out).name(name).build();
+    }
+
+    private SubsamplingLayer maxPool2x2(String name) {
+        return new SubsamplingLayer.Builder(SubsamplingLayer.PoolingType.MAX, new int[]{2, 2}, new int[]{2, 2}).name(name).build();
     }
 
     public static ParallelWrapper multiGPUModel(MultiLayerNetwork network, int buffer, int workers, int avgFrequency) {
@@ -122,19 +140,68 @@ public class Dl4j_1Main {
 
         log.debug("Load data");
         long dataLoadTime = System.currentTimeMillis();
-        DataSetIterator trainData = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345), nCores);
+        DataSetIterator trainData = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345));
         DataSetIterator testData = new MnistDataSetIterator(batchSize,false,12345);
         dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
         log.debug("Build model");
-        if(modelType.equals("mlp")) {
-            log.debug("MLP");
-            network = new Dl4j_MLP(height, width, channels, numLabels, learningRate, momentum, l2, seed).build_model();
+        if(modelType == "mlp") {
+            int hiddenNodes = 1000;
+            MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
+                    .seed(seed)
+                    .activation("relu")
+                    .weightInit(WeightInit.XAVIER)
+                    .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+                    .iterations(1)
+                    .learningRate(learningRate)
+                    .updater(Updater.NESTEROVS).momentum(momentum)
+                    .regularization(true).l2(l2)
+                    .list()
+                    .layer(0, new DenseLayer.Builder()
+                            .nIn(height * width)
+                            .nOut(hiddenNodes)
+                            .build())
+                    .layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+                            .nIn(hiddenNodes)
+                            .nOut(numLabels)
+                            .activation("softmax")
+                            .build())
+                    .pretrain(false).backprop(true)
+                    .build();
+
+            network = new MultiLayerNetwork(conf);
+            network.init();
         }
-        else {
-            log.debug("Lenet");
-            network = new Dl4j_Lenet(height, width, channels, numLabels, learningRate, momentum, l2, seed).build_model();
+        else  {
+            int ccn1Depth = 20;
+            int ccn2Depth = 50;
+            int ffn1Depth = 500;
+
+            MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
+                    .seed(seed)
+                    .iterations(1)
+                    .activation("identity")
+                    .weightInit(WeightInit.XAVIER)
+                    .learningRate(learningRate)//.biasLearningRate(2e-2)
+                    //.learningRateDecayPolicy(LearningRatePolicy.Inverse).lrPolicyDecayRate(0.001).lrPolicyPower(0.75)
+                    .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+                    .regularization(true).l2(l2)
+                    .updater(Updater.NESTEROVS).momentum(momentum)
+                    .list()
+                    .layer(0, conv5x5("cnn1", channels, ccn1Depth))
+                    .layer(1, maxPool2x2("maxpool1"))
+                    .layer(2, conv5x5("cnn2", 0, ccn2Depth))
+                    .layer(3, maxPool2x2("maxpool2"))
+                    .layer(4, new DenseLayer.Builder().name("ffn1").activation("relu").nOut(ffn1Depth).build())
+                    .layer(5, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+                            .name("output").nOut(numLabels).activation("softmax").build())
+                    .backprop(true).pretrain(false)
+                    .cnnInputSize(height, width, channels).build();
+
+            network = new MultiLayerNetwork(conf);
+            network.init();
         }
+
         log.debug("Train model");
         long trainTime = System.currentTimeMillis();
         train(network, trainData);
@@ -162,3 +229,4 @@ public class Dl4j_1Main {
     }
 
 }
+

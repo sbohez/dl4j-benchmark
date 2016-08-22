@@ -1,18 +1,13 @@
 # TensorFlow Benchmark Util
 
 import os
-import sys
-import org.deeplearning4j.ModelCompare.tensorflow as tf
 from six.moves import xrange
 import logging
 import re
 import time
-from org.deeplearning4j.ModelCompare.tensorflow.examples.tutorials.mnist import mnist
-from org.deeplearning4j.ModelCompare.tensorflow.examples.tutorials.mnist import input_data
-from os import path
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
-import CNNMnist.tensorflow_lenet as lenet
-import MLPMnistSingleLayer.tensorflow_mlp as mlp
+from tensorflow.examples.tutorials.mnist import input_data
+from tensorflow_lenet import Lenet
+from tensorflow_mlp import MLP
 
 
 DTYPE = tf.float32
@@ -54,11 +49,11 @@ tf.app.flags.DEFINE_integer('width', 28, 'Width.')
 tf.app.flags.DEFINE_integer('channels', 1, 'Channels.')
 
 model_config = {'lenet': {'batch_size': FLAGS.batch_size, 'num_classes': FLAGS.num_classes,
-                          'height': FLAGS.height, 'width': FLAGS.width,'channel': FLAGS.channels,
+                          'height': FLAGS.height, 'width': FLAGS.width,'channels': FLAGS.channels,
                           'use_cudnn': FLAGS.core_type != 'CPU','learning_rate': 1e-2, 'momentum': 0.9,'l2': 1e-2, 'seed': FLAGS.seed,
                           'dtype': DTYPE, 'device': DEVICE, 'data_format': DATA_FORMAT, 'one_hot': FLAGS.one_hot},
                 'mlp': {'batch_size': FLAGS.batch_size, 'num_classes': FLAGS.num_classes,
-                        'height': FLAGS.height, 'width': FLAGS.width,'channel': FLAGS.channels,
+                        'height': FLAGS.height, 'width': FLAGS.width,'channels': FLAGS.channels,
                         'use_cudnn': False,'learning_rate': 6e-4, 'momentum': 0.9,'l2': 1e-4, 'seed': FLAGS.seed,
                      'dtype': DTYPE, 'device': DEVICE, 'data_format': DATA_FORMAT}}
 
@@ -260,11 +255,12 @@ def do_eval(sess, model, images_placeholder, labels_placeholder, data):
     print("Accuracy: %.2f" % ((correct_count / num_examples) * 100))
 
 
-
 ############## Run ###############
 
 def run():
     total_time = time.time()
+
+    FLAGS.num_gpus = 1 if FLAGS.core_type == 'GPU' else FLAGS.num_gpus
 
     LOGGER.debug("Load Data")
     data_load_time = time.time()
@@ -276,10 +272,10 @@ def run():
         images_placeholder, labels_placeholder = placeholder_inputs(FLAGS.one_hot, FLAGS.height*FLAGS.width*FLAGS.channels, FLAGS.num_classes)
         LOGGER.debug("Build Model")
         if FLAGS.model_type == 'lenet':
-            model = lenet.Lenet(images_placeholder, model_config['lenet'])
+            model = Lenet(images_placeholder, model_config['lenet'])
             model.build_model()
         else:
-            model = mlp.MLP(images_placeholder, model_config['mlp'])
+            model = MLP(images_placeholder, model_config['mlp'])
             model.build_model()
 
         sess, model, train_time = train(model, images_placeholder, labels_placeholder, data_sets.train)
