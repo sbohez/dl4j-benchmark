@@ -1,4 +1,4 @@
-package org.deeplearning4j.Models;
+package org.deeplearning4j.Experiment;
 
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
