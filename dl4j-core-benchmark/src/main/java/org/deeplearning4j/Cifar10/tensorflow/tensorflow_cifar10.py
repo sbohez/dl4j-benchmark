@@ -6,7 +6,7 @@ Reference: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/model
 Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 """
 
-import tensorflow as tf
+import org.deeplearning4j.Cifar10.tensorflow as tf
 import os
 import time
 import sys
@@ -16,7 +16,7 @@ from six.moves import urllib, xrange
 import numpy as np
 from datetime import datetime
 import math
-from tensorflow.models.image.cifar10 import cifar10_input
+from org.deeplearning4j.Cifar10.tensorflow.models.image.cifar10 import cifar10_input
 
 # TODO add gpu & connect train with eval
 

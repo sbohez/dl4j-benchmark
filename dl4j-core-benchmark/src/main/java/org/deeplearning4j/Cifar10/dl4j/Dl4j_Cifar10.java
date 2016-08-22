@@ -1,4 +1,4 @@
-package org.dl4j.benchmarks.Cifar10;
+package org.deeplearning4j.Cifar10.dl4j;
 
 import org.datavec.image.loader.CifarLoader;
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
@@ -11,8 +11,6 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.Cifar10.CifarModels;
-import org.deeplearning4j.Cifar10.CifarModeEnum;
 import org.deeplearning4j.ModelCompare.dl4j.Dl4j_1Main;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;

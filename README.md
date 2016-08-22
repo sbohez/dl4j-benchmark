@@ -65,7 +65,7 @@ In order to run all examples in core, you need to configure a system for all of 
 
 Initial analysis. Consider all numbers hostile with potential to change as we get additional reviews sorted.
 
-##### Training Function Timing 
+#### **Training Function Timing** 
 
 **MLP Example**
 
@@ -86,7 +86,7 @@ Initial analysis. Consider all numbers hostile with potential to change as we ge
 | Torch      | 17m59s| 6m11s | 3m37s | ~98.3%   |
 
 
-##### Full Script Timing
+#### **Full Script Timing**
 
 **MLP Example**
 
@@ -101,17 +101,16 @@ Initial analysis. Consider all numbers hostile with potential to change as we ge
 
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------: |------:| -----:| -----:| --------:| 
-| Dl4j       | TVB   | 2m59s | 1m09s | ~99.0%   | 
+| Dl4j       | TBV   | 2m59s | 1m09s | ~99.0%   | 
 | Caffe      | 13m31s|   42s |   57s | ~99.0%   |
 | Tensorflow | 5m15s | 1m44s | 2m44s | ~98.6%   |
 | Torch      | 18m03s| 6m25s | 3m50s | ~98.3%   |
 
 Note: 
- * Tensorflow required learning rate modification on MLP by 1/10th otherwise accuracy drops to 9%
- - Accuracy varies slighty between cpu, single & multi-gpu. 
+ * Tensorflow required learning rate modification on MLP by 1/10th otherwise accuracy drops to 9% 
  - Timings vary (potentially a couple seconds) for all packages on each run
  - Time to transfer and consolidate data can lead to longer performance times on multi-gpu (larger datasets needed for comparison)
- - Issues getting nccl setup on system for Torch multiple gpu tests; thus, not used in tests 
+ - Issues getting nccl setup on system for Torch multiple gpu tests; thus, not used 
 
 ## *How to Help*
 Help is welcome to improve comparisons. If you know a better way or see a fix that is needed, please submit a pull request. Top of mind next steps that help would be appreciated:

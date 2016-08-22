@@ -9,7 +9,6 @@
 
 -- Note kept global variables to make it easeir to copy and debug in interactive shell
 
-require 'torch'
 require 'nn'
 
 lenet = {}
