@@ -1,12 +1,6 @@
--- Torch7 MLP
+-- Torch7 Lenet
 --
--- Reference Code:
---      https://github.com/torch/demos/blob/master/train-a-digit-classifier/train-on-mnist.lua
---      https://github.com/eladhoffer/ImageNet-Training/blob/master/Main.lua
---      https://github.com/soumith/imagenet-multiGPU.torch
--- Reference Xaviar: https://github.com/e-lab/torch-toolbox/blob/master/Weight-init/weight-init.lua#L19
-
--- Note kept global variables to make it easeir to copy and debug in interactive shell
+-- timing issues led to creating single script. Retaining till all timing issues confirmed resolved.
 
 
 require 'torch'
@@ -22,29 +16,39 @@ cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
 cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
 cmd:option('-threads', 8, 'Number of threads to use on the computer')
+cmd:option('-model_type', 'mlp', 'Which model to run')
 config = cmd:parse(arg)
+
+model_config = { lenet = {
+        usecuDNN = config.cudnn,
+        learningRate = 1e-2,
+        weightDecay = 5e-4,
+        nesterov = true,
+        momentum =  0.9,
+        dampening = 0,
+    }, mlp = {
+        usecuDNN = false,
+        learningRate = 0.006,
+        weightDecay = 6e-3,
+        nesterov = true,
+        momentum =  0.9,
+        dampening = 0,
+    }
+}
 
 opt = {
     gpu = config.gpu,
     multi = config.multi,
-    usecuDNN = false,
     max_epoch = 15,
     nExamples = 60000,
     nTestExamples = 10000,
     batchSize = 100,
-    noutputs = 10,
+    numClasses = 10,
     channels = 1,
     height = 28,
     width = 28,
-    ninputs = 28*28,
-    nhidden = 1000,
-    multiply_input_factor = 1,
+    numInputs = 28*28,
     nGPU = 1,
-    learningRate = 0.006,
-    weightDecay = 6e-3,
-    nesterov = true,
-    momentum =  0.9,
-    dampening = 0,
     threads = config.threads,
     logger = log.level == logroll.DEBUG,
     plot = false,--log.level == logroll.DEBUG,
@@ -57,8 +61,13 @@ opt = {
     flatten = true,
     useNccl = true, -- Nvidia's library bindings for parallel table
     save = "src/main/resources/torch-data/",
-
 }
+
+if config.model_type == 'mlp' then
+    model_config = model_config.lenet
+else
+    model_config = model_config.lenet
+end
 
 total_time = sys.clock()
 torch.manualSeed(opt.seed)
@@ -74,44 +83,23 @@ if opt.gpu then
 end
 
 optimState = {
-    learningRate = opt.learningRate,
-    weightDecay = opt.weightDecay,
-    nesterov = opt.nesterov,
-    momentum =  opt.momentum,
-    dampening = opt.dampening
+    learningRate = model_config.learningRate,
+    weightDecay = model_config.weightDecay,
+    nesterov = model_config.nesterov,
+    momentum =  model_config.momentum,
+    dampening = model_config.dampening
 }
 
 classes = {'1','2','3','4','5','6','7','8','9','10'}
 geometry = {opt.height,opt.width}
 confusion = optim.ConfusionMatrix(classes)
 
-
-
 -- log results to files
 trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
 testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
 
-function loadData(numExamples, numTestExamples, geometry)
-    trainData = mnist.loadTrainSet(numExamples, geometry)
-    trainData:normalizeGlobal()
-    testData = mnist.loadTestSet(numTestExamples, geometry)
-    testData:normalizeGlobal()
-    return trainData, testData
-end
-
-function applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
-
-function w_init_xavier(fan_in, fan_out)
-    return math.sqrt(2/(fan_in + fan_out))
-end
-
-function w_init_xavier_caffe(fan_in, fan_out)
-    return math.sqrt(1/fan_in)
-end
-
-function w_init_xavier_dl4j(fan_in, fan_out)
-    return math.sqrt(1/(fan_in + fan_out))
-end
+------------------------------------------------------------
+-- Support Functions
 
 function updateParams(model)
     for i=1, #model.modules do
@@ -129,7 +117,7 @@ function updateParams(model)
     return model
 end
 
-function makeDataParallelTable(model, use_cudnn, nGPU)
+function makeDataParallelTable(model, nGPU)
     local net = model
     local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
     for i = 1, nGPU do
@@ -151,10 +139,12 @@ function makeDataParallelTable(model, use_cudnn, nGPU)
     return model
 end
 
-function convertCuda(model, use_cudnn, nGPU)
+function applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
+
+function convertCuda(model, nGPU)
     require 'cunn'
     --    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
-    if use_cudnn then
+    if model_config.usecuDNN then
         local cudnn = require 'cudnn'
         cudnn.convert(model:get(nGPU), cudnn)
         cudnn.verbose = false
@@ -167,7 +157,7 @@ function convertCuda(model, use_cudnn, nGPU)
         end
     end
     if nGPU > 1 then
-        model = makeDataParallelTable(model, use_cudnn, nGPU)
+        model = makeDataParallelTable(model, nGPU)
     else
         model = applyCuda(true, model)
     end
@@ -183,24 +173,60 @@ function printTime(time_type, time)
         sec = math.floor(partialSec * 60)
     end
     local milli = time * 1000
-    print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
+    print(string.format(time_type .. ' time: %0.2f min %0.2f sec %0.2f millisec', min, sec,  milli))
 end
-
 
 ------------------------------------------------------------
 log.debug('Load data...')
 
-data_load_time = sys.clock()
-trainData, testData =  loadData(opt.nExamples, opt.nTestExamples, geometry)
-data_load_time = sys.clock() - data_load_time
+function loadData(numExamples, numTestExamples, geometry)
+    trainData = mnist.loadTrainSet(numExamples, geometry)
+    trainData:normalizeGlobal()
+    testData = mnist.loadTestSet(numTestExamples, geometry)
+    testData:normalizeGlobal()
+    return trainData, testData
+end
 
 ------------------------------------------------------------
 log.debug('Build model...')
+
+function w_init_xavier(fan_in, fan_out)
+    return math.sqrt(2/(fan_in + fan_out))
+end
+
+function w_init_xavier_caffe(fan_in, fan_out)
+    return math.sqrt(1/fan_in)
+end
+
+function w_init_xavier_dl4j(fan_in, fan_out)
+    return math.sqrt(1/(fan_in + fan_out))
+end
+
 model = nn.Sequential()
-model:add(nn.Reshape(opt.ninputs))
-model:add(nn.Linear(opt.ninputs,opt.nhidden))
-model:add(nn.ReLU())
-model:add(nn.Linear(opt.nhidden,opt.noutputs))
+if config.model_type == 'mlp' then
+    nhidden = 1000
+    model:add(nn.Reshape(opt.numInputs))
+    model:add(nn.Linear(opt.numInputs,nhidden))
+    model:add(nn.ReLU(true))
+    model:add(nn.Linear(nhidden,opt.numClasses))
+else
+    ccn1depth = 20
+    ccn2depth = 50
+    ffn1depth = 500
+    -- stage 1 : mean suppresion -> filter bank -> squashing -> max pooling
+    model:add(nn.SpatialConvolutionMM(opt.channels, ccn1depth, 5, 5))
+    model:add(nn.Identity())
+    model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+    -- stage 2 : mean suppresion -> filter bank -> squashing -> max pooling
+    model:add(nn.SpatialConvolutionMM(ccn1depth, ccn2depth, 5, 5))
+    model:add(nn.Identity())
+    model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+    -- stage 3 : standard 2-layer MLP:
+    model:add(nn.Reshape(ccn2depth*4*4))
+    model:add(nn.Linear(ccn2depth*4*4, ffn1depth))
+    model:add(nn.ReLU(true))
+    model:add(nn.Linear(ffn1depth, opt.numClasses))
+end
 model = updateParams(model)
 
 if opt.gpu then model = convertCuda(model, false, opt.nGPU) end
@@ -310,10 +336,24 @@ function test(dataset)
     -- print confusion matrix
     confusion:updateValids()
     if opt.logger then print(confusion) end
-    print('Accuracy: ', confusion.totalValid * 100)
+    print(string.format('Accuracy: [%0.2f]', confusion.totalValid * 100))
 end
 
--- Run program
+------------------------------------------------------------
+-- Run
+
+data_load_time = sys.clock()
+trainData, testData =  loadData(opt.nExamples, opt.nTestExamples, geometry)
+data_load_time = sys.clock() - data_load_time
+
+if opt.gpu then model = convertCuda(model, opt.nGPU) end
+parameters,gradParameters = model:getParameters()
+
+if opt.logger then
+    print("GPUS", opt.nGPU)
+    print("MODEL", model)
+end
+
 log.debug('Train model...')
 model:training()
 train_time = sys.clock()

@@ -1,5 +1,4 @@
---
--- Main Class
+-- Torch7 Main Class
 -- Run Lenet or MLP
 --
 require 'torch'
@@ -117,18 +116,18 @@ function printTime(time_type, time)
         sec = math.floor(partialSec * 60)
     end
     local milli = time * 1000
-    print(time_type .. ' time:' .. min .. ' min ' .. sec .. 'sec | ' .. milli .. ' millisec')
+    print(string.format(time_type .. ' time: %0.2f min %0.2f sec %0.2f millisec', min, sec,  milli))
 end
 
 function applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
 
-function convertCuda(model, use_cudnn, nGPU)
+function convertCuda(model, nGPU)
     require 'cunn'
     --    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
-    if use_cudnn then
+    if model_config.usecuDNN then
         local cudnn = require 'cudnn'
         cudnn.convert(model:get(nGPU), cudnn)
-        cudnn.verbose = false
+        cudnn.verbokse = false
         cudnn.benchmark = true
         if opt.cudnn_fastest then
             for _,v in ipairs(model:findModules'cudnn.SpatialConvolution') do v:fastest() end
@@ -138,14 +137,14 @@ function convertCuda(model, use_cudnn, nGPU)
         end
     end
     if nGPU > 1 then
-        model = makeDataParallelTable(model, use_cudnn, nGPU)
+        model = makeDataParallelTable(model, nGPU)
     else
         model = applyCuda(true, model)
     end
     return model
 end
 
-function makeDataParallelTable(model, use_cudnn, nGPU)
+function makeDataParallelTable(model, nGPU)
     local net = model
     local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
     for i = 1, nGPU do
@@ -290,9 +289,8 @@ else
     criterion = applyCuda(opt.gpu, mlp.define_loss())
 end
 
-if opt.gpu then model = convertCuda(model, opt.usecuDNN, opt.nGPU) end
+if opt.gpu then model = convertCuda(model, opt.nGPU) end
 parameters,gradParameters = model:getParameters()
-
 
 if opt.logger then
     print("GPUS", opt.nGPU)
