@@ -18,6 +18,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.bytedeco.javacpp.Pointer;
 import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
 import org.datavec.api.writable.Writable;
 import org.datavec.spark.transform.misc.StringToWritablesFunction;
@@ -46,9 +47,7 @@ import org.deeplearning4j.train.misc.EnumConverters;
 import org.nd4j.linalg.dataset.DataSet;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by Alex on 23/07/2016.
@@ -125,10 +124,20 @@ public class RunTrainingTests {
         //For debugging MKL linking issues only
         String mkl = System.getenv("MKL_THREADING_LAYER");
         String ld = System.getenv("LD_PRELOAD");
-        System.out.println("MKL_THREADING_LAYER: " + mkl);
-        System.out.println("LD_PRELOAD: " + ld);
         log.info("MKL_TREADING_LAYER: {}",mkl);
         log.info("LD_PRELOAD: {}",ld);
+
+        log.info("POINTER MAX BYTES: " + Pointer.maxBytes());
+
+        System.out.println("\n\n+++++ System Properties +++++");
+        Properties p = System.getProperties();
+        Enumeration keys = p.keys();
+        while (keys.hasMoreElements()) {
+            String key = (String)keys.nextElement();
+            String value = (String)p.get(key);
+            log.info(key + ": " + value);
+        }
+
         //========================================
 
         new RunTrainingTests().entryPoint(args);
@@ -339,11 +348,14 @@ public class RunTrainingTests {
 
                     RemoteIterator<LocatedFileStatus> fileIter = hdfs.listFiles(new org.apache.hadoop.fs.Path(dataDir), false);
 
+                    long start = System.currentTimeMillis();
                     List<String> paths = new ArrayList<>();
                     while(fileIter.hasNext()){
                         String path = fileIter.next().getPath().toString();
                         paths.add(path);
                     }
+                    long end = System.currentTimeMillis();
+                    log.info("StringPaths list files time: {} ms", (end-start));
 
                     stringPaths = sc.parallelize(paths);
                     stringPaths.cache();
