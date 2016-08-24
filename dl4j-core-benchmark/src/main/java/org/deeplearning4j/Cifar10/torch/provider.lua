@@ -21,7 +21,7 @@
 --OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 --SOFTWARE.
 --
--- Reference: https://github.com/szagoruyko/cifar.torch/blob/master/
+-- Reference: https://github.com/szagoruyko/cifar.torch
 
 require 'nn'
 require 'image'
@@ -32,12 +32,14 @@ local Provider = torch.class 'Provider'
 function Provider:__init(full)
     local trsize = 50000
     local tesize = 10000
+    local path_dataset = 'dl4j-core-benchmark/src/main/resources/torch-data'
 
     -- download dataset
-    if not paths.dirp('cifar-10-batches-t7') then
-        local www = 'http://torch7.s3-website-us-east-1.amazonaws.com/data/cifar-10-torch.tar.gz'
-        local tar = paths.basename(www)
-        os.execute('wget ' .. www .. '; '.. 'tar xvf ' .. tar)
+    if not paths.dirp(path_dataset) then
+        local remote = 'http://torch7.s3-website-us-east-1.amazonaws.com/data/cifar-10-torch.tar.gz'
+        local tar = paths.concat(path_dataset, paths.basename(remote))
+        os.execute('wget -cO' ..tar .. ' ' .. remote .. '; ' .. 'tar --strip-components=1 -zxvf ' .. tar .. ' -C ' .. path_dataset .. '; rm ' .. tar .. ';' )
+--        os.execute('wget ' .. www .. '; '.. 'tar xvf ' .. tar)
     end
 
     -- load dataset
@@ -48,13 +50,13 @@ function Provider:__init(full)
     }
     local trainData = self.trainData
     for i = 0,4 do
-        local subset = torch.load('cifar-10-batches-t7/data_batch_' .. (i+1) .. '.t7', 'ascii')
+        local subset = torch.load(paths.concat(path_dataset,'data_batch_' .. (i+1) .. '.t7'), 'ascii')
         trainData.data[{ {i*10000+1, (i+1)*10000} }] = subset.data:t()
         trainData.labels[{ {i*10000+1, (i+1)*10000} }] = subset.labels
     end
     trainData.labels = trainData.labels + 1
 
-    local subset = torch.load('cifar-10-batches-t7/test_batch.t7', 'ascii')
+    local subset = torch.load(paths.concat(path_dataset,'test_batch.t7') 'ascii')
     self.testData = {
         data = subset.data:t():double(),
         labels = subset.labels[1]:double(),

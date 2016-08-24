@@ -21,12 +21,14 @@
 --OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 --SOFTWARE.
 --
--- Reference: https://github.com/szagoruyko/cifar.torch/blob/master/
+-- Reference: https://github.com/szagoruyko/cifar.torch
 
 require 'xlua'
 require 'optim'
 require 'nn'
-dofile './provider.lua'
+main_path='dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/torch/'
+
+dofile 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/torch/provider.lua'
 local c = require 'trepl.colorize'
 
 opt = lapp[[
@@ -37,10 +39,11 @@ opt = lapp[[
    --weightDecay              (default 0.0005)      weightDecay
    -m,--momentum              (default 0.9)         momentum
    --epoch_step               (default 25)          epoch step
-   --model                    (default vgg_bn_drop)     model name
+   --model                    (default vgg_bn_model)     model name
    --max_epoch                (default 300)           maximum number of iterations
    --backend                  (default nn)            backend
    --type                     (default cuda)          cuda/float/cl
+   --nGPU                     (default 1)             number of gpus
 ]]
 
 print(opt)
@@ -80,22 +83,52 @@ local function cast(t)
     end
 end
 
+function makeDataParallelTable(model, nGPU)
+    local net = model
+    local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
+    for i = 1, nGPU do
+        cutorch.withDevice(i, function()
+            dpt:add(net:clone(), i)
+        end)
+        dpt.gradInput = nil
+        model = dpt:cuda()
+    end
+    return model
+end
+
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
 model:add(nn.BatchFlip():float())
 model:add(cast(nn.Copy('torch.FloatTensor', torch.type(cast(torch.Tensor())))))
-model:add(cast(dofile('models/'..opt.model..'.lua')))
+model:add(cast(dofile(main_path ..opt.model..'.lua')))
 model:get(2).updateGradInput = function(input) return end
 
 if opt.backend == 'cudnn' then
-    require 'cudnn'
-    cudnn.convert(model:get(3), cudnn)
+    require 'cunn'
+    local cudnn = require 'cudnn'
+    cudnn.convert(model:get(opt.nGPU), cudnn)
+    cudnn.verbose = false
+    cudnn.benchmark = true
+    if opt.cudnn_fastest then
+        for _,v in ipairs(model:findModules'cudnn.SpatialConvolution') do v:fastest() end
+    end
+    if opt.cudnn_deterministic then
+        model:apply(function(m) if m.setMode then m:setMode(1,1,1) end end)
+    end
+end
+if opt.nGPU > 1 then
+    model = makeDataParallelTable(model, opt.nGPU)
+else
+    model = applyCuda(true, model)
 end
 
 print(model)
-
 print(c.blue '==>' ..' loading data')
-provider = torch.load 'provider.t7'
+if not paths.dirp(paths.concat(main_path,'provider.tz')) then
+    provider = Provider()
+    provider:normalize()
+    torch.save(paths.concat(main_path,'provider.t7'), provider)
+provider = torch.load(paths.concat(main_path,'provider.t7))
 provider.trainData.data = provider.trainData.data:float()
 provider.testData.data = provider.testData.data:float()
 

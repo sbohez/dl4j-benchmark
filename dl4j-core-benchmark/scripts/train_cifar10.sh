@@ -11,7 +11,7 @@ while true; do
     esac
 done
 
-time python dl4j-core-benchmark/src/main/java/org/dl4j/benchmarks/Cifar10/tensorflow_cifar10.py
+time python dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/tensorflow/cifar10_multi_gpu_train.py --num_gpus 4
 time th dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/torch-cifar10.lua
 
 

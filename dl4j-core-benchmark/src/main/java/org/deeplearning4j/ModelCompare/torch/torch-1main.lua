@@ -127,7 +127,7 @@ function convertCuda(model, nGPU)
     if model_config.usecuDNN then
         local cudnn = require 'cudnn'
         cudnn.convert(model:get(nGPU), cudnn)
-        cudnn.verbokse = false
+        cudnn.verbose = false
         cudnn.benchmark = true
         if opt.cudnn_fastest then
             for _,v in ipairs(model:findModules'cudnn.SpatialConvolution') do v:fastest() end
