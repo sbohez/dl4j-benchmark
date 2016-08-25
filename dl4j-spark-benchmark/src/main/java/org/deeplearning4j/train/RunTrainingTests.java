@@ -18,6 +18,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.storage.StorageLevel;
 import org.bytedeco.javacpp.Pointer;
 import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
 import org.datavec.api.writable.Writable;
@@ -29,6 +30,7 @@ import org.deeplearning4j.spark.api.TrainingMaster;
 import org.deeplearning4j.spark.api.stats.SparkTrainingStats;
 import org.deeplearning4j.spark.data.DataSetExportFunction;
 import org.deeplearning4j.spark.datavec.DataVecDataSetFunction;
+import org.deeplearning4j.spark.impl.common.CountPartitionsFunction;
 import org.deeplearning4j.spark.impl.multilayer.SparkDl4jMultiLayer;
 import org.deeplearning4j.spark.impl.paramavg.ParameterAveragingTrainingMaster;
 import org.deeplearning4j.spark.stats.StatsUtils;
@@ -45,6 +47,7 @@ import org.deeplearning4j.train.functions.sequence.FromSequenceFilePairFunction;
 import org.deeplearning4j.train.functions.sequence.ToSequenceFilePairFunction;
 import org.deeplearning4j.train.misc.EnumConverters;
 import org.nd4j.linalg.dataset.DataSet;
+import scala.Tuple2;
 
 import java.net.URI;
 import java.util.*;
@@ -132,12 +135,13 @@ public class RunTrainingTests {
         System.out.println("\n\n+++++ System Properties +++++");
         Properties p = System.getProperties();
         Enumeration keys = p.keys();
-        while (keys.hasMoreElements()) {
-            String key = (String)keys.nextElement();
-            String value = (String)p.get(key);
-            log.info(key + ": " + value);
-        }
-
+//        while (keys.hasMoreElements()) {
+//            String key = (String)keys.nextElement();
+//            String value = (String)p.get(key);
+//            log.info(key + ": " + value);
+//        }
+//        org.apache.spark.storage.MemoryStore
+//        org.apache.spark.storage.MemoryEntry
         //========================================
 
         new RunTrainingTests().entryPoint(args);
@@ -413,6 +417,11 @@ public class RunTrainingTests {
 
                     JavaPairRDD<Text,BytesWritable> sequenceFile = sc.sequenceFile(dataDir, Text.class, BytesWritable.class);
                     trainData = sequenceFile.map(new FromSequenceFilePairFunction());
+
+                    //
+                    List<Tuple2<Integer, Integer>> partitionCounts = trainData.mapPartitionsWithIndex(new CountPartitionsFunction<DataSet>(), true).collect();
+                    log.info("PARTITION COUNTS: {}",partitionCounts);
+                    System.out.println("PARTITION COUNTS: " + partitionCounts);
 
                     break;
                 default:
