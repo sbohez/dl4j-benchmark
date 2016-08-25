@@ -49,6 +49,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('train_dir', '~/cifar/cifar-10-batches-bin',
                            """Directory where to write event logs """
                            """and checkpoint.""")
+# max_iteration = (epochs * numExamples)/batchSize (768 * 50000)/128
 tf.app.flags.DEFINE_integer('max_steps', 30000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_integer('num_gpus', 1,

@@ -128,7 +128,8 @@ if not paths.dirp(paths.concat(main_path,'provider.tz')) then
     provider = Provider()
     provider:normalize()
     torch.save(paths.concat(main_path,'provider.t7'), provider)
-provider = torch.load(paths.concat(main_path,'provider.t7))
+end
+provider = torch.load(paths.concat(main_path,'provider.t7'))
 provider.trainData.data = provider.trainData.data:float()
 provider.testData.data = provider.testData.data:float()
 
