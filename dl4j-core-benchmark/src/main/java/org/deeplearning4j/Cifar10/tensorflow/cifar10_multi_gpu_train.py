@@ -43,6 +43,8 @@ import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 from tensorflow.models.image.cifar10 import cifar10
+import cifar10_eval
+from tensorflow_utils import print_time
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -261,11 +263,26 @@ def train():
 
 
 def main(argv=None):  # pylint: disable=unused-argument
+    total_time = time.time()
+    data_load_time = time.time()
     cifar10.maybe_download_and_extract()
     if tf.gfile.Exists(FLAGS.train_dir):
         tf.gfile.DeleteRecursively(FLAGS.train_dir)
     tf.gfile.MakeDirs(FLAGS.train_dir)
+    data_load_time = time.time() - data_load_time
+    train_time = time.time()
     train()
+    train_time = time.time() - train_time
+    test_time = time.time()
+    cifar10_eval.evaluate()
+    test_time = time.time() - test_time
+    total_time = time.time() - total_time
+
+    print_time('Data load', data_load_time)
+    print_time('Train', train_time)
+    print_time('Test', test_time)
+    print_time('Total', total_time)
+
 
 
 if __name__ == '__main__':

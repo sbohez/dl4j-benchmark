@@ -1,4 +1,9 @@
-# TensorFlow Benchmark Util
+'''
+    TensorFlow Main Class
+
+    Run models by passing in --model_type
+    Current options are mlp and lenet
+'''
 
 import os
 from six.moves import xrange
@@ -58,7 +63,7 @@ model_config = {'lenet': {'batch_size': FLAGS.batch_size, 'num_classes': FLAGS.n
                      'dtype': DTYPE, 'device': DEVICE, 'data_format': DATA_FORMAT}}
 
 
-def printTime(time_type, time):
+def print_time(time_type, time):
     min = int(round(time/60))
     sec = int(round(time - min*60))
     milli = time * 1000
@@ -287,10 +292,10 @@ def run():
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
-    printTime('Data load', data_load_time)
-    printTime('Train', train_time)
-    printTime('Test', test_time)
-    printTime('Total', total_time)
+    print_time('Data load', data_load_time)
+    print_time('Train', train_time)
+    print_time('Test', test_time)
+    print_time('Total', total_time)
 
 
 if __name__ == "__main__":

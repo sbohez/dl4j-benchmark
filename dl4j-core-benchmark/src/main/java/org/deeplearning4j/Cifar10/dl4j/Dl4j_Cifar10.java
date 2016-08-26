@@ -125,7 +125,7 @@ public class Dl4j_Cifar10 {
             case TENSORFLOW_INFERENCE:
                 trainBatchSize = 128;
                 testBatchSize = 128;
-                epochs = 2560;
+                epochs = 768;
                 nIn = null;
                 nOut = new int[]{64, 64, 384, 192};
                 activation = "relu";
@@ -136,15 +136,16 @@ public class Dl4j_Cifar10 {
                 learningRate = 1e-1;
                 biasLearningRate = Double.NaN;
                 regularization = true;
-                l2 = 0.004;
+                l2 = 0;
                 momentum = 0.9;
                 break;
+            // TODO double check learning rate policy and weight init
             case TORCH_NIN:
                 trainBatchSize = 128;
                 testBatchSize = 128;
-                epochs = 2; // 300;
+                epochs = 300;
                 nIn = null;
-                nOut = null;
+                nOut = new int[]{192,160,96,192,192,192,192,192,192,10}; // TODO double check
                 activation = "relu";
                 weightInit = WeightInit.DISTRIBUTION;
                 optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
@@ -161,7 +162,7 @@ public class Dl4j_Cifar10 {
                 testBatchSize = 128;
                 epochs = 300;
                 nIn = null;
-                nOut = null;
+                nOut = new int[]{64,64,128,128,256,256,256,512,512,512,512,512,512,512,512};
                 activation = "relu";
                 weightInit = WeightInit.RELU;
                 optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
