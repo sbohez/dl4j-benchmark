@@ -60,7 +60,7 @@ public class Dl4j_Cifar10 {
     protected static double l2;
     protected static double momentum;
 
-    public static CifarModeEnum networkType = CifarModeEnum.TORCH_NIN;
+    public static CifarModeEnum networkType = CifarModeEnum.CAFFE_QUICK;
 
     public static void main(String[] args) throws IOException {
         long totalTime = System.currentTimeMillis();

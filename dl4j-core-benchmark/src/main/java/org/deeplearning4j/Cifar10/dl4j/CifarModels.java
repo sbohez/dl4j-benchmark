@@ -80,12 +80,16 @@ public class CifarModels {
         this.momentum = momentum;
     }
 
-    private ConvolutionLayer conv5x5(String name, int nIn, int out, double std, int[] padding) {
-        return new ConvolutionLayer.Builder(new int[]{5,5}, new int[]{1,1}, padding).name(name).nIn(nIn).nOut(out).dist(new GaussianDistribution(0, std)).build();
-    }
-
     private ConvolutionLayer conv1x1act(String name, int out, double std, int[] padding, String activation) {
         return new ConvolutionLayer.Builder(new int[]{1,1}, new int[]{1,1}, padding).name(name).nOut(out).activation(activation).dist(new GaussianDistribution(0, std)).build();
+    }
+
+    private ConvolutionLayer conv3x3dropact(String name, int out, double std, int[] padding, String activation, double dropOut) {
+        return new ConvolutionLayer.Builder(new int[]{3,3}, new int[]{1,1}, padding).name(name).nOut(out).activation(activation).dropOut(dropOut).dist(new GaussianDistribution(0, std)).build();
+    }
+
+    private ConvolutionLayer conv5x5(String name, int nIn, int out, double std, int[] padding) {
+        return new ConvolutionLayer.Builder(new int[]{5,5}, new int[]{1,1}, padding).name(name).nIn(nIn).nOut(out).dist(new GaussianDistribution(0, std)).build();
     }
 
     private ConvolutionLayer conv5x5act(String name, int out, double std, int[] padding, String activation) {
@@ -98,10 +102,6 @@ public class CifarModels {
 
     private ConvolutionLayer conv5x5dropact(String name, int out, double std, int[] padding, String activation) {
         return new ConvolutionLayer.Builder(new int[]{5,5}, new int[]{1,1}, padding).name(name).nOut(out).activation(activation).dropOut(0.5).dist(new GaussianDistribution(0, std)).build();
-    }
-
-    private ConvolutionLayer conv3x3dropact(String name, int out, double std, int[] padding, String activation, double dropOut) {
-        return new ConvolutionLayer.Builder(new int[]{3,3}, new int[]{1,1}, padding).name(name).nOut(out).activation(activation).dropOut(dropOut).dist(new GaussianDistribution(0, std)).build();
     }
 
     private SubsamplingLayer maxPool2x2(String name) {
@@ -120,8 +120,8 @@ public class CifarModels {
         return new LocalResponseNormalization.Builder(k, alpha, beta).name(name).n(n).build();
     }
 
-    private LocalResponseNormalization lrnBias(String name, int k, double alpha, double beta, int n, double bias) {
-        return new LocalResponseNormalization.Builder(k, alpha, beta).name(name).n(n).biasInit(bias).build();
+    private LocalResponseNormalization lrnBias(String name, int k, double alpha, double beta, int n) {
+        return new LocalResponseNormalization.Builder(k, alpha, beta).name(name).n(n).biasInit(1).build();
     }
 
     private DenseLayer dense(String name, int nout, double dropout, double std) {
@@ -244,9 +244,9 @@ public class CifarModels {
                 .list()
                 .layer(0, conv5x5("cnn1", channels, nOut[0], 5e-2, new int[]{0,0}))
                 .layer(1, maxPool3x3("pool1"))
-                .layer(2, lrnBias("lrn1", 1, 0.001/9.0, 0.75, 4, 1))
+                .layer(2, lrnBias("lrn1", 1, 0.001/9.0, 0.75, 4))
                 .layer(3, conv5x5bias("cnn2", channels, nOut[0], 5e-2, new int[]{0,0}, 0.1))
-                .layer(5, lrnBias("lrn2", 1, 0.001/9.0, 0.75, 4, 1))
+                .layer(5, lrnBias("lrn2", 1, 0.001/9.0, 0.75, 4))
                 .layer(4, maxPool3x3("pool2"))
                 .layer(6, denseL2Bias("ffn1", nOut[2], 4e-2, 0.1, 4e-3))
                 .layer(7, denseL2Bias("ffn2", nOut[2], 4e-2, 0.1, 4e-3))
