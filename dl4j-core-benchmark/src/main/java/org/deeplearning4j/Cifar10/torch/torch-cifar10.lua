@@ -8,25 +8,19 @@ require 'xlua'
 require 'optim'
 require 'image'
 require 'cunn'
-require 'cudnn'
 local c = require 'trepl.colorize'
-local json = require 'cjson'
 require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/Utils/torch-utils'
 require 'logroll'
 main_path='dl4j-core-benchmark/src/main/resources/torch-data'
+dofile 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/torch/provider.lua'
 
--- for memory optimizations and graph generation
-local optnet = require 'optnet'
-local graphgen = require 'optnet.graphgen'
-local iterm = require 'iterm'
 local tablex = require 'pl.tablex'
-require 'iterm.dot'
 
 ------------------------------------------------------------
 -- Setup Variables
 
 log = logroll.print_logger()
-log.level = logroll.INFO
+log.level = logroll.DEBUG
 
 cmd = torch.CmdLine()
 cmd:option('-gpu', false, 'boolean flag to use gpu for training')
@@ -55,9 +49,6 @@ opt = {
     dropout = 0,
     imageSize = 32,
     cudnn = true,
-    cudnn_fastest = true,
-    cudnn_deterministic = false,
-    optnet_optimize = true,
     generate_graph = false,
     multiply_input_factor = 1,
     nGPU = 0,
@@ -118,35 +109,23 @@ local function cast(t)
     end
 end
 
-function makeDataParallelTable(model, nGPU)
-    local net = model
-    local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
-    for i = 1, nGPU do
-        cutorch.withDevice(i, function()
-            dpt:add(net:clone(), i)
-        end)
-        dpt.gradInput = nil
-        model = dpt:cuda()
-    end
-    return model
-end
 
 ------------------------------------------------------------
 -- Load data
 data_load_time = sys.clock()
 log.debug(c.blue '==>' ..' loading data')
 
-if not paths.dirp(paths.concat(main_path,'provider.tz')) then
+verify_file = paths.concat(main_path,'provider')
+if not paths.dirp(verify_file) then
     provider = Provider()
+    print(provider)
     provider:normalize()
     torch.save(paths.concat(main_path,'provider.t7'), provider)
-    log.debug(' Saved data at '..opt.save)
+    log.debug(' Saved data at '..main_path.. 'provider.t7')
 end
 provider = torch.load(paths.concat(main_path,'provider.t7'))
 provider.trainData.data = provider.trainData.data:float()
 provider.testData.data = provider.testData.data:float()
-
-print('Will save at '..main_path)
 
 testLogger = optim.Logger(paths.concat(main_path, 'test.log'))
 testLogger:setNames{'% mean class accuracy (train set)', '% mean class accuracy (test set)'}
@@ -157,7 +136,7 @@ data_load_time = sys.clock() - data_load_time
 ------------------------------------------------------------
 -- Build model
 
-function nin()
+function nin(model)
     local function Block(...)
         local arg = {...}
         model:add(nn.SpatialConvolution(...))
@@ -189,42 +168,42 @@ function nin()
     return model
 end
 
-function vgg()
+function vgg(model)
     -- building block
     local function ConvBNReLU(nInputPlane, nOutputPlane)
-        vgg:add(nn.SpatialConvolution(nInputPlane, nOutputPlane, 3,3, 1,1, 1,1))
-        vgg:add(nn.SpatialBatchNormalization(nOutputPlane,1e-3))
-        vgg:add(nn.ReLU(true))
-        return vgg
+        model:add(nn.SpatialConvolution(nInputPlane, nOutputPlane, 3,3, 1,1, 1,1))
+        model:add(nn.SpatialBatchNormalization(nOutputPlane,1e-3))
+        model:add(nn.ReLU(true))
+        return model
     end
     -- Will use "ceil" MaxPooling because we want to save as much feature space as we can
     local MaxPooling = nn.SpatialMaxPooling
 
     ConvBNReLU(3,64):add(nn.Dropout(0.3))
     ConvBNReLU(64,64)
-    vgg:add(MaxPooling(2,2,2,2):ceil())
+    model:add(MaxPooling(2,2,2,2):ceil())
     ConvBNReLU(64,128):add(nn.Dropout(0.4))
     ConvBNReLU(128,128)
-    vgg:add(MaxPooling(2,2,2,2):ceil())
+    model:add(MaxPooling(2,2,2,2):ceil())
     ConvBNReLU(128,256):add(nn.Dropout(0.4))
     ConvBNReLU(256,256):add(nn.Dropout(0.4))
     ConvBNReLU(256,256)
-    vgg:add(MaxPooling(2,2,2,2):ceil())
+    model:add(MaxPooling(2,2,2,2):ceil())
     ConvBNReLU(256,512):add(nn.Dropout(0.4))
     ConvBNReLU(512,512):add(nn.Dropout(0.4))
     ConvBNReLU(512,512)
-    vgg:add(MaxPooling(2,2,2,2):ceil())
+    model:add(MaxPooling(2,2,2,2):ceil())
     ConvBNReLU(512,512):add(nn.Dropout(0.4))
     ConvBNReLU(512,512):add(nn.Dropout(0.4))
     ConvBNReLU(512,512)
-    vgg:add(MaxPooling(2,2,2,2):ceil())
-    vgg:add(nn.View(512))
-    vgg:add(nn.Dropout(0.5))
-    vgg:add(nn.Linear(512,512))
-    vgg:add(nn.BatchNormalization(512))
-    vgg:add(nn.ReLU(true))
-    vgg:add(nn.Dropout(0.5))
-    vgg:add(nn.Linear(512,10))
+    model:add(MaxPooling(2,2,2,2):ceil())
+    model:add(nn.View(512))
+    model:add(nn.Dropout(0.5))
+    model:add(nn.Linear(512,512))
+    model:add(nn.BatchNormalization(512))
+    model:add(nn.ReLU(true))
+    model:add(nn.Dropout(0.5))
+    model:add(nn.Linear(512,10))
 
     -- initialization from MSR
     for k,v in pairs(model:findModules('nn.SpatialConvolution')) do
@@ -232,63 +211,32 @@ function vgg()
         v.weight:normal(0,math.sqrt(2/n))
         if v.bias then v.bias:zero() end
     end
-    for k,v in pairs(vgg:findModules'nn.Linear') do
+    for k,v in pairs(model:findModules'nn.Linear') do
         v.bias:zero()
     end
     for i,v in ipairs(model:findModules'nn.SpatialConvolution') do
         v.bias = nil
         v.gradBias = nil
     end
-    return vgg
+    return model
 end
 
 
-do
-    log.debug(c.blue '==>' ..' build model')
-    local model = nn.Sequential()
-    model:add(BatchFlip():float())
-    model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
-    if config.model_type == 'nin' then
-        model = nin(model):add(nn.SoftMax():cuda())
-    else
-        model = vgg(model):add(nn.SoftMax():cuda())
-    end
-    model:get(2).updateGradInput = function(input) return end
-
-    if opt.cudnn then
-        require 'cunn'
-        local cudnn = require 'cudnn'
-        cudnn.convert(model:get(opt.nGPU), cudnn)
-        cudnn.verbose = false
-        cudnn.benchmark = true
-        if opt.cudnn_fastest then
-            for _,v in ipairs(model:findModules'cudnn.SpatialConvolution') do v:fastest() end
-        end
-        if opt.cudnn_deterministic then
-            model:apply(function(m) if m.setMode then m:setMode(1,1,1) end end)
-        end
-    end
-
-    if opt.nGPU > 1 then
-        model = makeDataParallelTable(model, opt.nGPU)
-    else
-        model = applyCuda(true, model)
-    end
-
-    log.debug(model)
-
-    -- memory optimization?
---    local sample_input = torch.randn(8,3,opt.imageSize,opt.imageSize):cuda()
---    if opt.generate_graph then
---        iterm.dot(graphgen(net, sample_input), opt.save..'/graph.pdf')
---    end
---    if opt.optnet_optimize then
---        optnet.optimizeMemory(net, sample_input, {inplace = false, mode = 'training'})
---    end
-
+log.debug(c.blue '==>' ..' build model')
+model = nn.Sequential()
+model:add(nn.BatchFlip():float())
+model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
+if config.model_type == 'nin' then
+    model = nin(model)
+else
+    model = vgg(model)
 end
+model:add(nn.SoftMax()):cuda()
+model:get(2).updateGradInput = function(input) return end
 
 
+
+if opt.gpu then model = util.convertCuda(model, opt.nGPU) end
 local parameters,gradParameters = model:getParameters()
 opt.n_parameters = parameters:numel()
 log.debug('Network has ', parameters:numel(), 'parameters')
@@ -309,8 +257,7 @@ local f = function(inputs, targets)
 end
 
 
-function train()
-    model:training()
+function train(model)
     epoch = epoch or 1
 
     -- drop learning rate every "epoch_step" epochs
@@ -351,7 +298,7 @@ end
 ------------------------------------------------------------
 -- Evaluate
 
-function test()
+function test(model)
     model:evaluate()
     print(c.blue '==>'.." evaluate model")
     local data_split = provider.testData.data:split(opt.batchSize,1)
@@ -367,32 +314,18 @@ end
 
 ------------------------------------------------------------
 -- Run
-local function timing(f) local s = torch.Timer(); return f(), s:time().real end
+local function timing(f, input) local s = torch.Timer(); return f(input), s:time().real end
 
 log.debug(c.blue '==>' ..' train model')
+model:training()
 for epoch=1,opt.max_epoch do
---    log.debug('==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
---    -- drop learning rate and reset momentum vector
---    if torch.type(opt.epoch_step) == 'number' and epoch % opt.epoch_step == 0 or
---            torch.type(opt.epoch_step) == 'table' and tablex.find(opt.epoch_step, epoch) then
---        opt.learningRate = opt.learningRate * opt.learningRateDecayRatio
---        optimState = tablex.deepcopy(opt)
---    end
-
-    local loss, train_time = timing(train)
-
-    log{
-        loss = loss,
-        epoch = epoch,
-        lr = opt.learningRate,
-        train_time = train_time,
-    }
+    local loss, train_time = timing(train, model)
 end
 
 log.debug(c.blue '==>' ..' evaluate model')
-local test_acc, test_time = timing(test)
+local test_acc, test_time = timing(test, model)
 
-torch.save(opt.save..'/model.t7', net:clearState())
+torch.save(opt.save..'/model.t7', model:clearState())
 total_time = sys.clock() - total_time
 
 print("****************Example finished********************")

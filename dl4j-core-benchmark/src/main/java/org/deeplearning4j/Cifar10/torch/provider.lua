@@ -33,13 +33,12 @@ function Provider:__init(full)
     local trsize = 50000
     local tesize = 10000
     local path_dataset = 'dl4j-core-benchmark/src/main/resources/torch-data'
-
+    local verify_file = paths.concat(path_dataset, 'provider')
     -- download dataset
-    if not paths.dirp(path_dataset) then
+    if not paths.dirp(verify_file) then
         local remote = 'http://torch7.s3-website-us-east-1.amazonaws.com/data/cifar-10-torch.tar.gz'
         local tar = paths.concat(path_dataset, paths.basename(remote))
         os.execute('wget -cO' ..tar .. ' ' .. remote .. '; ' .. 'tar --strip-components=1 -zxvf ' .. tar .. ' -C ' .. path_dataset .. '; rm ' .. tar .. ';' )
---        os.execute('wget ' .. www .. '; '.. 'tar xvf ' .. tar)
     end
 
     -- load dataset
@@ -56,7 +55,7 @@ function Provider:__init(full)
     end
     trainData.labels = trainData.labels + 1
 
-    local subset = torch.load(paths.concat(path_dataset,'test_batch.t7') 'ascii')
+    local subset = torch.load(paths.concat(path_dataset,'test_batch.t7'), 'ascii')
     self.testData = {
         data = subset.data:t():double(),
         labels = subset.labels[1]:double(),
