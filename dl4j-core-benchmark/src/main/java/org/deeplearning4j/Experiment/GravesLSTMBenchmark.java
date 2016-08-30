@@ -4,7 +4,6 @@ package org.deeplearning4j.Experiment;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.NormalDistribution;
-import org.deeplearning4j.nn.layers.factory.LayerFactories;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -31,9 +30,9 @@ public class GravesLSTMBenchmark {
                         .build())
                 .build();
 
-        int numParams = LayerFactories.getFactory(conf).initializer().numParams(conf,true);
+        int numParams = conf.getLayer().initializer().numParams(conf,true);
         INDArray params = Nd4j.create(1, numParams);
-        Layer lstm = LayerFactories.getFactory(conf.getLayer()).create(conf, null, 0, params, true);
+        Layer lstm = conf.getLayer().instantiate(conf, null, 0, params, true);
 
         int nIterationsBefore = 50;
         int nIterations = 100;

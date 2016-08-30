@@ -31,9 +31,6 @@
     <profiles>
         <profile>
             <id>native</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
             <properties>
                 <dl4j.backend>deeplearning4j-core</dl4j.backend>
                 <nd4j.backend>nd4j-native</nd4j.backend>

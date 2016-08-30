@@ -1,6 +1,7 @@
 package org.deeplearning4j.Cifar10.dl4j;
 
 import org.datavec.image.loader.CifarLoader;
+import org.deeplearning4j.Utils.DL4J_Utils;
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.CifarDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
@@ -12,6 +13,9 @@ import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.ModelCompare.dl4j.Dl4j_1Main;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.Option;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +36,20 @@ import java.util.Arrays;
  */
 public class Dl4j_Cifar10 {
     protected static final Logger log = LoggerFactory.getLogger(Dl4j_Cifar10.class);
+
+    // values to pass in from command line when compiled, esp running remotely
+    @Option(name = "--modelType", usage = "Model type CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG.", aliases = "-mT")
+    public String modelType = "CAFFE_QUICK";
+    @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
+    // 12 is best on AWS
+    public int numGPUs = 0;
+
+
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = 2000;//CifarLoader.NUM_TRAIN_IMAGES;
-    protected static int numTestExamples = 2000; //CifarLoader.NUM_TEST_IMAGES;
+    protected static int numTrainExamples = CifarLoader.NUM_TRAIN_IMAGES;
+    protected static int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
     protected static int trainBatchSize;
     protected static int testBatchSize;
@@ -59,18 +72,14 @@ public class Dl4j_Cifar10 {
     protected static boolean regularization;
     protected static double l2;
     protected static double momentum;
+    protected static MultiLayerNetwork network;
+
 
     public static CifarModeEnum networkType = CifarModeEnum.CAFFE_QUICK;
 
-    public static void main(String[] args) throws IOException {
-        long totalTime = System.currentTimeMillis();
-        MultiLayerNetwork network;
-        int normalizeValue = 255;
 
-        System.out.println("Load data...");
-
-        log.info("Build model....");
-        switch (networkType) {
+    public void setVaribales() {
+        switch (CifarModeEnum.valueOf(modelType)) {
             case CAFFE_QUICK:
                 epochs = 1;
                 trainBatchSize = 100;
@@ -177,6 +186,26 @@ public class Dl4j_Cifar10 {
             default:
                 throw new InvalidInputTypeException("Incorrect model provided.");
         }
+    }
+
+    public void run(String[] args) throws IOException {
+        long totalTime = System.currentTimeMillis();
+        int normalizeValue = 255;
+
+        // Parse command line arguments if they exist
+        CmdLineParser parser = new CmdLineParser(this);
+        try {
+            parser.parseArgument(args);
+        } catch (CmdLineException e) {
+            // handling of wrong arguments
+            System.err.println(e.getMessage());
+            parser.printUsage(System.err);
+        }
+
+        log.debug("Load data...");
+
+        log.debug("Build model....");
+        setVaribales();
         network = new CifarModels(
                 HEIGHT,
                 WIDTH,
@@ -196,34 +225,37 @@ public class Dl4j_Cifar10 {
                 regularization,
                 l2,
                 momentum).buildNetwork(networkType);
-
-
         network.setListeners(Arrays.asList((IterationListener) new ScoreIterationListener(listenerFreq)));
 
-        System.out.println("Train model...");
+        log.debug("Train model...");
         long dataLoadTime = System.currentTimeMillis();
         MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, normalizeValue, true));
-        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false));
         dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
         long trainTime = System.currentTimeMillis();
-        network.fit(cifar);
+        DL4J_Utils.train(network, cifar, numGPUs);
         trainTime = System.currentTimeMillis() - trainTime;
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
+        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false));
         Evaluation eval = network.evaluate(cifarTest);
-        System.out.println(eval.stats(true));
+        log.debug(eval.stats(true));
         testTime =  System.currentTimeMillis() - testTime;
 
         totalTime = System.currentTimeMillis() - totalTime;
 
         log.info("****************Example finished********************");
-        Dl4j_1Main.printTime("Data", dataLoadTime);
-        Dl4j_1Main.printTime("Train", trainTime);
-        Dl4j_1Main.printTime("Test", testTime);
-        Dl4j_1Main.printTime("Total", totalTime);
+        DL4J_Utils.printTime("Data", dataLoadTime);
+        DL4J_Utils.printTime("Train", trainTime);
+        DL4J_Utils.printTime("Test", testTime);
+        DL4J_Utils.printTime("Total", totalTime);
 
     }
+
+    public static void main(String[] args) throws Exception {
+        new Dl4j_1Main().run(args);
+    }
+
 
 }

@@ -11,31 +11,43 @@ require 'cunn'
 require 'cudnn'
 local c = require 'trepl.colorize'
 local json = require 'cjson'
-require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/Utils/benchmark-util'
+require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/Utils/torch-utils'
+require 'logroll'
 
 -- for memory optimizations and graph generation
 local optnet = require 'optnet'
 local graphgen = require 'optnet.graphgen'
 local iterm = require 'iterm'
+local tablex = require 'pl.tablex'
 require 'iterm.dot'
+
+------------------------------------------------------------
+-- Setup Variables
+
+log = logroll.print_logger()
+log.level = logroll.INFO
+
+cmd = torch.CmdLine()
+cmd:option('-gpu', false, 'boolean flag to use gpu for training')
+cmd:option('-multi', false, 'boolean flag to use multi-gpu for training')
+-- TODO go after res net which is closer to 95% accuracy
+cmd:option('-model_type', 'mlp', 'Which model to run between nin and vgg')
+config = cmd:parse(arg)
+
 
 total_time = sys.clock()
 torch.manualSeed(42)
 
 opt = {
+    gpu = config.gpu,
+    multi = config.multi,
     -- TODO get file and labeled
     dataset = 'dl4j-core-benchmark/src/main/resources/torch-data/cifar10_whitened.t7',
     save = 'logs',
     batchSize = 128,
-    learningRate = 0.1,
-    learningRateDecay = 0,
-    learningRateDecayRatio = 0.2,
-    weightDecay = 5e-4,
-    dampening = 0,
-    momentum = 0.9,
-    epoch_step = "80",
+    learningRateDecayRatio = 1e-7,
+    epoch_step = 25,
     max_epoch = 300,
-    model = 'nin',
     optimMethod = 'sgd',
     init_value = 10,
     depth = 50,
@@ -53,65 +65,38 @@ opt = {
     multiply_input_factor = 1,
     widen_factor = 1,
     nGPU = 0,
---    gpu = true,
 --    channels = 1,
 --    height = 32,
 --    width = 32,
 --    ninputs = 32*32,
 --    coefL2 = 1e-4,
-
 }
 
+if opt.multi then opt.nGPU = cutorch.getDeviceCount() end
+
+optimState = {
+    learningRate = 0.1,
+    weightDecay = 5e-4,
+}
+
+classes = {'airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'}
+confusion = optim.ConfusionMatrix(classes)
 opt = xlua.envparams(opt)
 
-opt.epoch_step = tonumber(opt.epoch_step) or loadstring('return '..opt.epoch_step)()
-print(opt)
+log.debug(opt)
 
 ------------------------------------------------------------
 -- support functions
 
-do -- random crop
-local RandomCrop, parent = torch.class('nn.RandomCrop', 'nn.Module')
+do -- data augmentation module
+local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module')
 
-function RandomCrop:__init(pad, mode)
-    assert(pad)
+function BatchFlip:__init()
     parent.__init(self)
-    self.pad = pad
-    if mode == 'reflection' then
-        self.module = nn.SpatialReflectionPadding(pad,pad,pad,pad)
-    elseif mode == 'zero' then
-        self.module = nn.SpatialZeroPadding(pad,pad,pad,pad)
-    else
-        error'unknown mode'
-    end
     self.train = true
 end
 
-function RandomCrop:updateOutput(input)
-    assert(input:dim() == 4)
-    local imsize = input:size(4)
-    if self.train then
-        local padded = self.module:forward(input)
-        local x = torch.random(1,self.pad*2 + 1)
-        local y = torch.random(1,self.pad*2 + 1)
-        self.output = padded:narrow(4,x,imsize):narrow(3,y,imsize)
-    else
-        self.output:set(input)
-    end
-    return self.output
-end
-
-function RandomCrop:type(type)
-    self.module:type(type)
-    return parent.type(self, type)
-end
-end
-
-do -- random horizontal flip
-local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module')
-
 function BatchFlip:updateOutput(input)
-    self.train = self.train == nil and true or self.train
     if self.train then
         local bs = input:size(1)
         local flip_mask = torch.randperm(bs):le(bs/2)
@@ -119,23 +104,82 @@ function BatchFlip:updateOutput(input)
             if flip_mask[i] == 1 then image.hflip(input[i], input[i]) end
         end
     end
-    self.output:resize(input:size()):copy(input)
+    self.output:set(input)
     return self.output
 end
 end
+
+local function cast(t)
+    if opt.type == 'cuda' then
+        require 'cunn'
+        return t:cuda()
+    elseif opt.type == 'float' then
+        return t:float()
+    elseif opt.type == 'cl' then
+        require 'clnn'
+        return t:cl()
+    else
+        error('Unknown type '..opt.type)
+    end
+end
+
+function makeDataParallelTable(model, nGPU)
+    local net = model
+    local dpt = nn.DataParallelTable(1, opt.flatten, opt.useNccl)
+    for i = 1, nGPU do
+        cutorch.withDevice(i, function()
+            dpt:add(net:clone(), i)
+        end)
+        dpt.gradInput = nil
+        model = dpt:cuda()
+    end
+    return model
+end
+
 ------------------------------------------------------------
--- print('Load data')
+-- Load data
 data_load_time = sys.clock()
+log.debug(c.blue '==>' ..' loading data')
 print(c.blue '==>' ..' loading data')
 local provider = torch.load(opt.dataset)
-opt.num_classes = provider.testData.labels:max()
 data_load_time = sys.clock() - data_load_time
 
 ------------------------------------------------------------
--- print('Build model')
-print(c.blue '==>' ..' loading data')
+-- Build model
+
+function nin()
+    local function Block(...)
+        local arg = {...}
+        model:add(nn.SpatialConvolution(...))
+        model:add(nn.SpatialBatchNormalization(arg[2],1e-3))
+        model:add(nn.ReLU(true))
+        return model
+    end
+
+    Block(3,192,5,5,1,1,2,2)
+    Block(192,160,1,1)
+    Block(160,96,1,1)
+    model:add(nn.SpatialMaxPooling(3,3,2,2):ceil())
+    model:add(nn.Dropout())
+    Block(96,192,5,5,1,1,2,2)
+    Block(192,192,1,1)
+    Block(192,192,1,1)
+    model:add(nn.SpatialAveragePooling(3,3,2,2):ceil())
+    model:add(nn.Dropout())
+    Block(192,192,3,3,1,1,1,1)
+    Block(192,192,1,1)
+    Block(192,10,1,1)
+    model:add(nn.SpatialAveragePooling(8,8,1,1):ceil())
+    model:add(nn.View(10))
+
+    for k,v in pairs(model:findModules(('%s.SpatialConvolution'):format(backend_name))) do
+        v.weight:normal(0,0.05)
+        v.bias:zero()
+    end
+    return model
+end
+
 function vgg()
-    local vgg = nn.Sequential()
     -- building block
     local function ConvBNReLU(nInputPlane, nOutputPlane)
         vgg:add(nn.SpatialConvolution(nInputPlane, nOutputPlane, 3,3, 1,1, 1,1))
@@ -188,9 +232,38 @@ function vgg()
     return vgg
 end
 
-print(c.blue '==>' ..' configuring model')
+log.debug(c.blue '==>' ..' build model')
 local model = nn.Sequential()
-local net = vgg():cuda()
+model:add(nn.BatchFlip():float())
+model:add(cast(nn.Copy('torch.FloatTensor', torch.type(cast(torch.Tensor())))))
+
+if config.model_type == 'nin' then
+    model = nin(model):add(nn.SoftMax():cuda())
+else
+    model = vgg(model):add(nn.SoftMax():cuda())
+end
+model:get(2).updateGradInput = function(input) return end
+
+if opt.backend == 'cudnn' then
+    require 'cunn'
+    local cudnn = require 'cudnn'
+    cudnn.convert(model:get(opt.nGPU), cudnn)
+    cudnn.verbose = false
+    cudnn.benchmark = true
+    if opt.cudnn_fastest then
+        for _,v in ipairs(model:findModules'cudnn.SpatialConvolution') do v:fastest() end
+    end
+    if opt.cudnn_deterministic then
+        model:apply(function(m) if m.setMode then m:setMode(1,1,1) end end)
+    end
+end
+
+if opt.nGPU > 1 then
+    model = makeDataParallelTable(model, opt.nGPU)
+else
+    model = applyCuda(true, model)
+end
+
 do
     function nn.Copy.updateGradInput() end
     local function add(flag, module) if flag then model:add(module) end end
@@ -224,15 +297,15 @@ end
 
 local function log(t) print('json_stats: '..json.encode(tablex.merge(t,opt,true))) end
 
-print('Will save at '..opt.save)
+log.debug(' Will save at '..opt.save)
+
 paths.mkdir(opt.save)
 
 local parameters,gradParameters = model:getParameters()
 
 opt.n_parameters = parameters:numel()
-print('Network has ', parameters:numel(), 'parameters')
+log.debug('Network has ', parameters:numel(), 'parameters')
 
-print(c.blue'==>' ..' setting criterion')
 local criterion = nn.CrossEntropyCriterion():cuda()
 
 -- a-la autograd
@@ -244,14 +317,19 @@ local f = function(inputs, targets)
     return loss
 end
 
-print(c.blue'==>' ..' configuring optimizer')
 local optimState = tablex.deepcopy(opt)
 
 
 ------------------------------------------------------------
--- print('Train model')
+-- Train model
 function train()
     model:training()
+    epoch = epoch or 1
+
+    -- drop learning rate every "epoch_step" epochs
+    if epoch % opt.epoch_step == 0 then optimState.learningRate = optimState.learningRate/2 end
+
+    print(c.blue '==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
 
     local targets = torch.CudaTensor(opt.batchSize)
     local indices = torch.randperm(provider.trainData.data:size(1)):long():split(opt.batchSize)
@@ -260,7 +338,10 @@ function train()
 
     local loss = 0
 
+    local tic = torch.tic()
     for t,v in ipairs(indices) do
+        xlua.progress(t, #indices)
+
         local inputs = provider.trainData.data:index(1,v)
         targets:copy(provider.trainData.labels:index(1,v))
 
@@ -275,25 +356,29 @@ function train()
     return loss / #indices
 end
 ------------------------------------------------------------
--- print('Evaluate')
-confusion = optim.ConfusionMatrix(classes)
+-- Evaluate
+
 function test()
     model:evaluate()
     local confusion = optim.ConfusionMatrix(opt.num_classes)
     local data_split = provider.testData.data:split(opt.batchSize,1)
     local labels_split = provider.testData.labels:split(opt.batchSize,1)
 
-    for i,v in ipairs(data_split) do
-        confusion:batchAdd(model:forward(v), labels_split[i])
-    end
+    confusion:batchAdd(model:forward(data_split), labels_split)
 
     confusion:updateValids()
+    if opt.logger then print(confusion) end
+    print('Accuracy: ', confusion.totalValid * 100)
     return confusion.totalValid * 100
 end
 
 ------------------------------------------------------------
+-- Run
+local function t(f) local s = torch.Timer(); return f(), s:time().real end
+
+log.debug(c.blue '==>' ..' train model')
 for epoch=1,opt.max_epoch do
-    print('==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+    log.debug('==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
     -- drop learning rate and reset momentum vector
     if torch.type(opt.epoch_step) == 'number' and epoch % opt.epoch_step == 0 or
             torch.type(opt.epoch_step) == 'table' and tablex.find(opt.epoch_step, epoch) then
@@ -301,20 +386,18 @@ for epoch=1,opt.max_epoch do
         optimState = tablex.deepcopy(opt)
     end
 
-    local function t(f) local s = torch.Timer(); return f(), s:time().real end
-
     local loss, train_time = t(train)
-    local test_acc, test_time = t(test)
 
     log{
         loss = loss,
         epoch = epoch,
-        test_acc = test_acc,
         lr = opt.learningRate,
         train_time = train_time,
-        test_time = test_time,
     }
 end
+
+log.debug(c.blue '==>' ..' evaluate model')
+local test_acc, test_time = t(test)
 
 torch.save(opt.save..'/model.t7', net:clearState())
 total_time = sys.clock() - total_time

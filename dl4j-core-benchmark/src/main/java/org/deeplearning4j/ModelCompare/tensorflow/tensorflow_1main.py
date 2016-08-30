@@ -13,7 +13,7 @@ import time
 from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow_lenet import Lenet
 from tensorflow_mlp import MLP
-
+from org.deeplearning4j.Utils.tensorflow_utils import print_time
 
 DTYPE = tf.float32
 DEVICE = '/cpu:0'
@@ -61,13 +61,6 @@ model_config = {'lenet': {'batch_size': FLAGS.batch_size, 'num_classes': FLAGS.n
                         'height': FLAGS.height, 'width': FLAGS.width,'channels': FLAGS.channels,
                         'use_cudnn': False,'learning_rate': 6e-4, 'momentum': 0.9,'l2': 1e-4, 'seed': FLAGS.seed,
                      'dtype': DTYPE, 'device': DEVICE, 'data_format': DATA_FORMAT}}
-
-
-def print_time(time_type, time):
-    min = int(round(time/60))
-    sec = int(round(time - min*60))
-    milli = time * 1000
-    print(time_type + ' load time: %s min %s sec | %s millisec' %(min, sec, milli))
 
 
 ############## Data ###############

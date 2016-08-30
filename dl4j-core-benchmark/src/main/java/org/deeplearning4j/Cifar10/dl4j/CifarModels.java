@@ -124,7 +124,11 @@ public class CifarModels {
         return new LocalResponseNormalization.Builder(k, alpha, beta).name(name).n(n).biasInit(1).build();
     }
 
-    private DenseLayer dense(String name, int nout, double dropout, double std) {
+    private DenseLayer dense(String name, int nout, double dropout) {
+        return new DenseLayer.Builder().name(name).nOut(nout).dropOut(dropout).build();
+    }
+
+    private DenseLayer denseNorm(String name, int nout, double dropout, double std) {
         return new DenseLayer.Builder().name(name).nOut(nout).dropOut(dropout).dist(new GaussianDistribution(0, std)).build();
     }
 
@@ -155,7 +159,7 @@ public class CifarModels {
                 .layer(3, maxPool3x3("pool2"))
                 .layer(4, conv5x5("cnn3", 0, nOut[2], 1e-2, new int[]{2,2}))
                 .layer(5, maxPool3x3("pool3"))
-                .layer(6, dense("ffn1", nOut[3], 0.5, 1e-2))
+                .layer(6, denseNorm("ffn1", nOut[3], 0.5, 1e-2))
                 .layer(7, output("softmax", numLabels, 1e-2))
                 .backprop(true).pretrain(false)
                 .cnnInputSize(height, width, channels);
@@ -183,7 +187,7 @@ public class CifarModels {
                 .layer(5, lrn("lrn1", 1, 5e-05, 0.75, 3))
                 .layer(6, conv5x5("cnn3", 0, nOut[2], 1e-2, new int[]{2,2}))
                 .layer(7, maxPool3x3("pool3"))
-                .layer(8, dense("ffn1", nOut[3], 0.5, 1e-2))
+                .layer(8, denseNorm("ffn1", nOut[3], 0.5, 1e-2))
                 .layer(9, output("softmax", numLabels, 1e-2))
                 .backprop(true).pretrain(false)
                 .cnnInputSize(height, width, channels);
@@ -211,15 +215,15 @@ public class CifarModels {
                 .layer(2, new BatchNormalization.Builder().build())
                 .layer(3, new ActivationLayer.Builder().build())
                 .layer(4, conv5x5("cnn2", 0, nOut[1], 1e-2, new int[]{2,2}))
-                .layer(4, conv5x5act("cnn2", nOut[1], 1e-2, new int[]{2,2}, "identity"))
-                .layer(5, new BatchNormalization.Builder().build())
-                .layer(6, new ActivationLayer.Builder().build())
-                .layer(7, maxPool3x3("pool2"))
-                .layer(8, conv5x5act("cnn2", nOut[2], 1e-2, new int[]{2,2}, "identity"))
-                .layer(9, new BatchNormalization.Builder().build())
-                .layer(10, new ActivationLayer.Builder().build())
-                .layer(11, maxPool3x3("pool2"))
-                .layer(12, output("softmax", numLabels, 1e-2))
+                .layer(5, conv5x5act("cnn2", nOut[1], 1e-2, new int[]{2,2}, "identity"))
+                .layer(6, new BatchNormalization.Builder().build())
+                .layer(7, new ActivationLayer.Builder().build())
+                .layer(8, maxPool3x3("pool2"))
+                .layer(9, conv5x5act("cnn2", nOut[2], 1e-2, new int[]{2,2}, "identity"))
+                .layer(10, new BatchNormalization.Builder().build())
+                .layer(11, new ActivationLayer.Builder().build())
+                .layer(12, maxPool3x3("pool2"))
+                .layer(13, output("softmax", numLabels, 1e-2))
                 .backprop(true).pretrain(false)
                 .cnnInputSize(height, width, channels);
         conf = builder.build();
@@ -246,8 +250,8 @@ public class CifarModels {
                 .layer(1, maxPool3x3("pool1"))
                 .layer(2, lrnBias("lrn1", 1, 0.001/9.0, 0.75, 4))
                 .layer(3, conv5x5bias("cnn2", channels, nOut[0], 5e-2, new int[]{0,0}, 0.1))
-                .layer(5, lrnBias("lrn2", 1, 0.001/9.0, 0.75, 4))
-                .layer(4, maxPool3x3("pool2"))
+                .layer(4, lrnBias("lrn2", 1, 0.001/9.0, 0.75, 4))
+                .layer(5, maxPool3x3("pool2"))
                 .layer(6, denseL2Bias("ffn1", nOut[2], 4e-2, 0.1, 4e-3))
                 .layer(7, denseL2Bias("ffn2", nOut[2], 4e-2, 0.1, 4e-3))
                 .layer(8, output("softmax", numLabels, 1/192.0))
@@ -276,11 +280,11 @@ public class CifarModels {
                 .layer(3, conv5x5act("cnn2", 0, nOut[1], new int[]{0,0}, "identity"))
                 .layer(4, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(5, new ActivationLayer.Builder().build())
-                .layer(3, conv5x5act("cnn3", 0, nOut[2], new int[]{0,0}, "identity"))
+                .layer(6, conv5x5act("cnn3", 0, nOut[2], new int[]{0,0}, "identity"))
                 .layer(7, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(8, new ActivationLayer.Builder().build())
                 .layer(9, maxPool3x3("pool1"))
-                .layer(3, conv5x5dropact("cnn4", 0, nOut[3], new int[]{2,2}, "identity"))
+                .layer(10, conv5x5dropact("cnn4", 0, nOut[3], new int[]{2,2}, "identity"))
                 .layer(11, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(12, new ActivationLayer.Builder().build())
                 .layer(13, conv5x5act("cnn5", 0, nOut[4], new int[]{0,0}, "identity"))
@@ -290,7 +294,7 @@ public class CifarModels {
                 .layer(17, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(18, new ActivationLayer.Builder().build())
                 .layer(19, maxPool3x3("pool2"))
-                .layer(16, conv3x3dropact("cnn7", 0, nOut[6], new int[]{1,1}, "identity", 0.5))
+                .layer(20, conv3x3dropact("cnn7", 0, nOut[6], new int[]{1,1}, "identity", 0.5))
                 .layer(21, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(22, new ActivationLayer.Builder().build())
                 .layer(23, conv1x1act("cnn8", 0, nOut[7], new int[]{0,0}, "identity"))
@@ -324,7 +328,7 @@ public class CifarModels {
                 .layer(0, conv3x3dropact("cnn1", channels, nOut[0], new int[]{1,1}, "identity", 0.3))
                 .layer(1, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(2, new ActivationLayer.Builder().build())
-                .layer(0, conv3x3dropact("cnn2", channels, nOut[1], new int[]{1,1}, "identity", 1))
+                .layer(3, conv3x3dropact("cnn2", channels, nOut[1], new int[]{1,1}, "identity", 1))
                 .layer(4, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(5, new ActivationLayer.Builder().build())
                 .layer(6, maxPool2x2("pool1"))
@@ -365,10 +369,10 @@ public class CifarModels {
                 .layer(41, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(42, new ActivationLayer.Builder().build())
                 .layer(43, maxPool2x2("pool5"))
-                .layer(44, dense("ffn1", nOut[13], 0.5, 0))
+                .layer(44, dense("ffn1", nOut[13], 0.5))
                 .layer(45, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(46, new ActivationLayer.Builder().build())
-                .layer(47, dense("ffn1", nOut[13], 0.5, 0))
+                .layer(47, dense("ffn2", nOut[14], 0.5))
                 .layer(48, output("softmax", numLabels, 1/192.0))
                 .backprop(true).pretrain(false)
                 .cnnInputSize(height,width,channels);
