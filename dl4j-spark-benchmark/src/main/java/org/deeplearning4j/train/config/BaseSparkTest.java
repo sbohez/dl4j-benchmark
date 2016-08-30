@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import lombok.Data;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.deeplearning4j.spark.api.RDDTrainingApproach;
 import org.deeplearning4j.spark.api.Repartition;
 import org.deeplearning4j.spark.api.RepartitionStrategy;
 import org.deeplearning4j.train.DataLoadingMethod;
@@ -36,6 +37,7 @@ public abstract class BaseSparkTest implements SparkTest {
     protected DataLoadingMethod dataLoadingMethod;
     protected CsvCompressionCodec csvCompressionCodec;
     protected int csvCoalesceSize;
+    protected RDDTrainingApproach rddTrainingApproach;
 
 
     protected BaseSparkTest(Builder builder){
@@ -51,6 +53,7 @@ public abstract class BaseSparkTest implements SparkTest {
         this.dataLoadingMethod = builder.dataLoadingMethod;
         this.csvCompressionCodec = builder.csvCompressionCodec;
         this.csvCoalesceSize = builder.csvCoalesceSize;
+        this.rddTrainingApproach = builder.rddTrainingApproach;
     }
 
     @Override
@@ -104,6 +107,7 @@ public abstract class BaseSparkTest implements SparkTest {
         protected DataLoadingMethod dataLoadingMethod = DataLoadingMethod.SparkBinaryFiles;
         protected CsvCompressionCodec csvCompressionCodec;
         protected int csvCoalesceSize;
+        protected RDDTrainingApproach rddTrainingApproach = RDDTrainingApproach.Export;
 
 
         protected Random rng = new Random();
@@ -165,6 +169,11 @@ public abstract class BaseSparkTest implements SparkTest {
 
         public T csvCoalesceSize(int csvCoalesceSize){
             this.csvCoalesceSize = csvCoalesceSize;
+            return (T)this;
+        }
+
+        public T rddTrainingApproach(RDDTrainingApproach rddTrainingApproach){
+            this.rddTrainingApproach = rddTrainingApproach;
             return (T)this;
         }
 
