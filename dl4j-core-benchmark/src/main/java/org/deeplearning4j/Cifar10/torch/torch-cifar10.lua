@@ -52,6 +52,7 @@ opt = {
     generate_graph = false,
     multiply_input_factor = 1,
     nGPU = 0,
+
 --    channels = 1,
 --    height = 32,
 --    width = 32,
@@ -96,17 +97,8 @@ end
 end
 
 local function cast(t)
-    if opt.type == 'cuda' then
-        require 'cunn'
-        return t:cuda()
-    elseif opt.type == 'float' then
-        return t:float()
-    elseif opt.type == 'cl' then
-        require 'clnn'
-        return t:cl()
-    else
-        error('Unknown type '..opt.type)
-    end
+    require 'cunn'
+    return t:cuda()
 end
 
 
@@ -122,6 +114,7 @@ if not paths.dirp(verify_file) then
     provider:normalize()
     torch.save(paths.concat(main_path,'provider.t7'), provider)
     log.debug(' Saved data at '..main_path.. 'provider.t7')
+    paths.mkdir(paths.concat(main_path, 'provider')) -- Hacky avoid pulling data and processing
 end
 provider = torch.load(paths.concat(main_path,'provider.t7'))
 provider.trainData.data = provider.trainData.data:float()
@@ -136,7 +129,9 @@ data_load_time = sys.clock() - data_load_time
 ------------------------------------------------------------
 -- Build model
 
-function nin(model)
+function nin()
+    local model = nn.Sequential()
+
     local function Block(...)
         local arg = {...}
         model:add(nn.SpatialConvolution(...))
@@ -165,10 +160,13 @@ function nin(model)
         v.weight:normal(0,0.05)
         v.bias:zero()
     end
+    model:add(nn.SoftMax())
     return model
 end
 
-function vgg(model)
+function vgg()
+    local model = nn.Sequential()
+
     -- building block
     local function ConvBNReLU(nInputPlane, nOutputPlane)
         model:add(nn.SpatialConvolution(nInputPlane, nOutputPlane, 3,3, 1,1, 1,1))
@@ -218,33 +216,33 @@ function vgg(model)
         v.bias = nil
         v.gradBias = nil
     end
+    model:add(nn.SoftMax())
     return model
 end
 
 
 log.debug(c.blue '==>' ..' build model')
-model = nn.Sequential()
+local model = nn.Sequential()
 model:add(nn.BatchFlip():float())
-model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
+model:add(cast(nn.Copy('torch.FloatTensor', torch.type(cast(torch.Tensor())))))
+model:add(cast(dofile()))
 if config.model_type == 'nin' then
-    model = nin(model)
+    model:add(cast(dofile(nin())))
 else
-    model = vgg(model)
+    model:add(cast(dofile(vgg())))
 end
-model:add(nn.SoftMax()):cuda()
+
 model:get(2).updateGradInput = function(input) return end
-
-
-
+--model:add(nn.SoftMax()):cuda()
 if opt.gpu then model = util.convertCuda(model, opt.nGPU) end
 local parameters,gradParameters = model:getParameters()
 opt.n_parameters = parameters:numel()
 log.debug('Network has ', parameters:numel(), 'parameters')
 
 local criterion = nn.CrossEntropyCriterion():cuda()
-
 local optimState = tablex.deepcopy(opt)
 
+log.debug(model)
 
 ------------------------------------------------------------
 -- Train model

@@ -84,8 +84,12 @@ public class CifarModels {
         return new ConvolutionLayer.Builder(new int[]{1,1}, new int[]{1,1}, padding).name(name).nOut(out).activation(activation).dist(new GaussianDistribution(0, std)).build();
     }
 
-    private ConvolutionLayer conv3x3dropact(String name, int out, double std, int[] padding, String activation, double dropOut) {
-        return new ConvolutionLayer.Builder(new int[]{3,3}, new int[]{1,1}, padding).name(name).nOut(out).activation(activation).dropOut(dropOut).dist(new GaussianDistribution(0, std)).build();
+    private ConvolutionLayer conv3x3act(String name, int nIn, int out) {
+        return new ConvolutionLayer.Builder(new int[]{3,3}, new int[]{1,1}, new int[]{1,1}).name(name).nIn(nIn).nOut(out).activation("identity").build();
+    }
+
+    private ConvolutionLayer conv3x3dropact(String name, int nIn, int out, double dropOut) {
+        return new ConvolutionLayer.Builder(new int[]{3,3}, new int[]{1,1}, new int[]{1,1}).name(name).nIn(nIn).nOut(out).activation("identity").dropOut(dropOut).build();
     }
 
     private ConvolutionLayer conv5x5(String name, int nIn, int out, double std, int[] padding) {
@@ -272,6 +276,9 @@ public class CifarModels {
                 .optimizationAlgo(optimizationAlgorithm)
                 .learningRate(learningRate)
                 .regularization(true).l2(l2)
+                .learningRateDecayPolicy(LearningRatePolicy.TorchStep)
+                .lrPolicyDecayRate(.5)
+                .lrPolicySteps(25)
                 .momentum(momentum)
                 .list()
                 .layer(0, conv5x5act("cnn1", channels, nOut[0], new int[]{2,2}, "identity"))
@@ -294,7 +301,7 @@ public class CifarModels {
                 .layer(17, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(18, new ActivationLayer.Builder().build())
                 .layer(19, maxPool3x3("pool2"))
-                .layer(20, conv3x3dropact("cnn7", 0, nOut[6], new int[]{1,1}, "identity", 0.5))
+                .layer(20, conv3x3dropact("cnn7", 0, nOut[6], 0.5))
                 .layer(21, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(22, new ActivationLayer.Builder().build())
                 .layer(23, conv1x1act("cnn8", 0, nOut[7], new int[]{0,0}, "identity"))
@@ -323,49 +330,58 @@ public class CifarModels {
                 .optimizationAlgo(optimizationAlgorithm)
                 .learningRate(learningRate)
                 .regularization(true).l2(l2)
+                .learningRateDecayPolicy(LearningRatePolicy.TorchStep)
+                .lrPolicyDecayRate(.5)
+                .lrPolicySteps(9765) // 9765 = (25*50000)/128 - based on iterations
+                // TODO need momentum applied when not nesterovs
+                // TODO need lr decay applied in sgd when provided
+                // TODO local, global v, global u norm
+                // TODO apply yuv conversion
+                // TODO merge master
+                // TODO add weight init for caffe for Xavier and recompare lenet
                 .momentum(momentum)
                 .list()
-                .layer(0, conv3x3dropact("cnn1", channels, nOut[0], new int[]{1,1}, "identity", 0.3))
+                .layer(0, conv3x3dropact("cnn1", channels, nOut[0], 0.3))
                 .layer(1, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(2, new ActivationLayer.Builder().build())
-                .layer(3, conv3x3dropact("cnn2", channels, nOut[1], new int[]{1,1}, "identity", 1))
+                .layer(3, conv3x3act("cnn2", 0, nOut[1]))
                 .layer(4, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(5, new ActivationLayer.Builder().build())
                 .layer(6, maxPool2x2("pool1"))
-                .layer(7, conv3x3dropact("cnn3", channels, nOut[2], new int[]{1,1}, "identity", 0.4))
+                .layer(7, conv3x3dropact("cnn3", 0, nOut[2], 0.4))
                 .layer(8, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(9, new ActivationLayer.Builder().build())
-                .layer(10, conv3x3dropact("cnn4", channels, nOut[3], new int[]{1,1}, "identity", 1))
+                .layer(10, conv3x3act("cnn4", 0, nOut[3]))
                 .layer(11, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(12, new ActivationLayer.Builder().build())
                 .layer(13, maxPool2x2("pool2"))
-                .layer(14, conv3x3dropact("cnn5", channels, nOut[4], new int[]{1,1}, "identity", 0.4))
+                .layer(14, conv3x3dropact("cnn5", 0, nOut[4], 0.4))
                 .layer(15, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(16, new ActivationLayer.Builder().build())
-                .layer(17, conv3x3dropact("cnn6", channels, nOut[5], new int[]{1,1}, "identity", 0.4))
+                .layer(17, conv3x3dropact("cnn6", 0, nOut[5], 0.4))
                 .layer(18, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(19, new ActivationLayer.Builder().build())
-                .layer(20, conv3x3dropact("cnn7", channels, nOut[6], new int[]{1,1}, "identity", 1))
+                .layer(20, conv3x3act("cnn7", 0, nOut[6]))
                 .layer(21, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(22, new ActivationLayer.Builder().build())
                 .layer(23, maxPool2x2("pool3"))
-                .layer(24, conv3x3dropact("cnn8", channels, nOut[7], new int[]{1,1}, "identity", 0.4))
+                .layer(24, conv3x3dropact("cnn8", 0, nOut[7], 0.4))
                 .layer(25, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(26, new ActivationLayer.Builder().build())
-                .layer(27, conv3x3dropact("cnn9", channels, nOut[8], new int[]{1,1}, "identity", 0.4))
+                .layer(27, conv3x3dropact("cnn9", 0, nOut[8], 0.4))
                 .layer(28, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(29, new ActivationLayer.Builder().build())
-                .layer(30, conv3x3dropact("cnn10", channels, nOut[9], new int[]{1,1}, "identity", 1))
+                .layer(30, conv3x3act("cnn10", 0, nOut[9]))
                 .layer(31, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(32, new ActivationLayer.Builder().build())
                 .layer(33, maxPool2x2("pool4"))
-                .layer(34, conv3x3dropact("cnn11", channels, nOut[10], new int[]{1,1}, "identity", 0.4))
+                .layer(34, conv3x3dropact("cnn11", 0, nOut[10], 0.4))
                 .layer(35, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(36, new ActivationLayer.Builder().build())
-                .layer(37, conv3x3dropact("cnn12", channels, nOut[11], new int[]{1,1}, "identity", 0.4))
+                .layer(37, conv3x3dropact("cnn12", 0, nOut[11], 0.4))
                 .layer(38, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(39, new ActivationLayer.Builder().build())
-                .layer(40, conv3x3dropact("cnn13", channels, nOut[12], new int[]{1,1}, "identity", 1))
+                .layer(40, conv3x3act("cnn13", 0, nOut[12]))
                 .layer(41, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(42, new ActivationLayer.Builder().build())
                 .layer(43, maxPool2x2("pool5"))

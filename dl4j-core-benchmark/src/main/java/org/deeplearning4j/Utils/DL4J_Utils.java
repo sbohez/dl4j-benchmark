@@ -33,9 +33,9 @@ public class DL4J_Utils {
     }
 
     public static void train(MultiLayerNetwork network, DataSetIterator data, int numGPUs){
-        org.nd4j.jita.conf.CudaEnvironment.getInstance().getConfiguration().allowMultiGPU(true)
-                .setMaximumDeviceCache(4L * 1024L * 1024L).setMaximumHostCache(8L * 1024L * 1024L)
-                .setMaximumGridSize(512).setMaximumBlockSize(512).allowCrossDeviceAccess(true);
+//        org.nd4j.jita.conf.CudaEnvironment.getInstance().getConfiguration().allowMultiGPU(true)
+//                .setMaximumDeviceCache(4L * 1024L * 1024L).setMaximumHostCache(8L * 1024L * 1024L)
+//                .setMaximumGridSize(512).setMaximumBlockSize(512).allowCrossDeviceAccess(true);
 
         if(numGPUs > 0 ) {
             ParallelWrapper wrapper = multiGPUModel(network, buffer, numGPUs, avgFrequency);
