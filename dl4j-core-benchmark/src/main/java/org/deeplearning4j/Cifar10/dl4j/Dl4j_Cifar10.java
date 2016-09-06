@@ -12,7 +12,6 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.ModelCompare.dl4j.Dl4j_1Main;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
@@ -40,7 +39,7 @@ public class Dl4j_Cifar10 {
 
     // values to pass in from command line when compiled, esp running remotely
     @Option(name = "--modelType", usage = "Model type CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG.", aliases = "-mT")
-    public String modelType = "TORCH_VGG";
+    public String modelType = "CAFFE_FULL_SIGMOID";
     @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
     // 12 is best on AWS
     public int numGPUs = 0;
@@ -49,8 +48,8 @@ public class Dl4j_Cifar10 {
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = 1000;//CifarLoader.NUM_TRAIN_IMAGES;
-    protected static int numTestExamples = 1000;//CifarLoader.NUM_TEST_IMAGES;
+    protected static int numTrainExamples = CifarLoader.NUM_TRAIN_IMAGES;
+    protected static int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
     protected static int trainBatchSize;
     protected static int testBatchSize;

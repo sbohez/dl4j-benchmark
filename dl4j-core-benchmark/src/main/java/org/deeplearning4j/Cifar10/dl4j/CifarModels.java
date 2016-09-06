@@ -7,6 +7,7 @@ import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.Updater;
 import org.deeplearning4j.nn.conf.distribution.GaussianDistribution;
 import org.deeplearning4j.nn.conf.distribution.NormalDistribution;
+import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.inputs.InvalidInputTypeException;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
@@ -219,11 +220,11 @@ public class CifarModels {
                 .layer(2, new BatchNormalization.Builder().build())
                 .layer(3, new ActivationLayer.Builder().build())
                 .layer(4, conv5x5("cnn2", 0, nOut[1], 1e-2, new int[]{2,2}))
-                .layer(5, conv5x5act("cnn2", nOut[1], 1e-2, new int[]{2,2}, "identity"))
+                .layer(5, conv5x5act("cnn2", nOut[2], 1e-2, new int[]{2,2}, "identity"))
                 .layer(6, new BatchNormalization.Builder().build())
                 .layer(7, new ActivationLayer.Builder().build())
                 .layer(8, maxPool3x3("pool2"))
-                .layer(9, conv5x5act("cnn2", nOut[2], 1e-2, new int[]{2,2}, "identity"))
+                .layer(9, conv5x5act("cnn2", nOut[3], 1e-2, new int[]{2,2}, "identity"))
                 .layer(10, new BatchNormalization.Builder().build())
                 .layer(11, new ActivationLayer.Builder().build())
                 .layer(12, maxPool3x3("pool2"))
@@ -256,7 +257,7 @@ public class CifarModels {
                 .layer(3, conv5x5bias("cnn2", channels, nOut[0], 5e-2, new int[]{0,0}, 0.1))
                 .layer(4, lrnBias("lrn2", 1, 0.001/9.0, 0.75, 4))
                 .layer(5, maxPool3x3("pool2"))
-                .layer(6, denseL2Bias("ffn1", nOut[2], 4e-2, 0.1, 4e-3))
+                .layer(6, denseL2Bias("ffn1", nOut[1], 4e-2, 0.1, 4e-3))
                 .layer(7, denseL2Bias("ffn2", nOut[2], 4e-2, 0.1, 4e-3))
                 .layer(8, output("softmax", numLabels, 1/192.0))
                 .backprop(true).pretrain(false)
@@ -267,6 +268,7 @@ public class CifarModels {
     }
 
     public MultiLayerConfiguration torchInitNin(){
+
         MultiLayerConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
                 .seed(seed)
                 .activation(activation)
@@ -300,14 +302,14 @@ public class CifarModels {
                 .layer(16, conv5x5act("cnn6", 0, nOut[5], new int[]{0,0}, "identity"))
                 .layer(17, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(18, new ActivationLayer.Builder().build())
-                .layer(19, maxPool3x3("pool2"))
+                .layer(19, maxPool3x3("pool2")) //TODO 32 not large enough for this setup - verify config - gets to size 3 here
                 .layer(20, conv3x3dropact("cnn7", 0, nOut[6], 0.5))
                 .layer(21, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(22, new ActivationLayer.Builder().build())
                 .layer(23, conv1x1act("cnn8", 0, nOut[7], new int[]{0,0}, "identity"))
                 .layer(24, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(25, new ActivationLayer.Builder().build())
-                .layer(26, conv1x1act("cnn9", 0, nOut[7], new int[]{1,1}, "identity"))
+                .layer(26, conv1x1act("cnn9", 0, nOut[8], new int[]{1,1}, "identity"))
                 .layer(27, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(28, new ActivationLayer.Builder().build())
                 .layer(29, maxPool6x6("pool3"))
