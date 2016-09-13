@@ -84,6 +84,7 @@ public class Dl4j_1Main {
                 .prefetchBuffer(buffer)
                 .workers(workers)
                 .averagingFrequency(avgFrequency)
+                .useLegacyAveraging(false)
                 .build();
     }
 
