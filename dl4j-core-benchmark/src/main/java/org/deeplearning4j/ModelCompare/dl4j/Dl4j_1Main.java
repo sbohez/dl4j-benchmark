@@ -96,8 +96,8 @@ public class Dl4j_1Main {
             ParallelWrapper wrapper = multiGPUModel(network, buffer, numGPUs, avgFrequency);
             wrapper.fit(data);
         } else {
-            ParallelWrapper wrapper = multiGPUModel(network, buffer, 2, 4);
-            wrapper.fit(data);
+
+            //wrapper.fit(data);
         }
 
     }
@@ -136,13 +136,15 @@ public class Dl4j_1Main {
             log.debug("Lenet");
             network = new Dl4j_Lenet(height, width, channels, numLabels, learningRate, momentum, l2, seed).build_model();
         }
+        ParallelWrapper wrapper = multiGPUModel(network, buffer, 2, 4);
+
         log.debug("Train model");
         long trainTime = System.currentTimeMillis();
         for (int i = 0; i < epochs; i++) {
             trainData.reset();
 
             long time1 = System.currentTimeMillis();
-            train(network, trainData);
+            wrapper.fit(trainData);
             long time2 = System.currentTimeMillis();
 
             log.info("Epoch {} complete; Time elapsed: {} ms", i, time2 -  time1);
