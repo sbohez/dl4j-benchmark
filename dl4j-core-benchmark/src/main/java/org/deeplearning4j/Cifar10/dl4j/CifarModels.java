@@ -339,7 +339,6 @@ public class CifarModels {
                 // TODO need lr decay applied in sgd when provided
                 // TODO local, global v, global u norm
                 // TODO apply yuv conversion
-                // TODO merge master
                 // TODO add weight init for caffe for Xavier and recompare lenet
                 .momentum(momentum)
                 .list()

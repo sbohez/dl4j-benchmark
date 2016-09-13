@@ -1,6 +1,9 @@
 package org.deeplearning4j.Cifar10.dl4j;
 
 import org.datavec.image.loader.CifarLoader;
+import org.datavec.image.transform.ColorConversion;
+import org.datavec.image.transform.FlipImageTransform;
+import org.datavec.image.transform.ImageTransform;
 import org.deeplearning4j.Utils.DL4J_Utils;
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.CifarDataSetIterator;
@@ -39,7 +42,7 @@ public class Dl4j_Cifar10 {
 
     // values to pass in from command line when compiled, esp running remotely
     @Option(name = "--modelType", usage = "Model type CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG.", aliases = "-mT")
-    public String modelType = "CAFFE_FULL_SIGMOID";
+    public String modelType = "CAFFE_QUICK";
     @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
     // 12 is best on AWS
     public int numGPUs = 0;
@@ -48,8 +51,8 @@ public class Dl4j_Cifar10 {
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = CifarLoader.NUM_TRAIN_IMAGES;
-    protected static int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
+    protected static int numTrainExamples = 200; //CifarLoader.NUM_TRAIN_IMAGES;
+    protected static int numTestExamples = 200; //CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
     protected static int trainBatchSize;
     protected static int testBatchSize;
@@ -201,7 +204,8 @@ public class Dl4j_Cifar10 {
         setVaribales();
 
         log.debug("Load data...");
-        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, normalizeValue, true));
+        ImageTransform flip = new FlipImageTransform(seed); // Should random flip some images but not all
+        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, yuvTransform, null, true));
 
         log.debug("Build model....");
         network = new CifarModels(
@@ -235,7 +239,7 @@ public class Dl4j_Cifar10 {
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
-        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false));
+        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, numLabels, yuvTransform, null, false));
         Evaluation eval = network.evaluate(cifarTest);
         log.debug(eval.stats(true));
         DecimalFormat df = new DecimalFormat("#.####");

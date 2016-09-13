@@ -44,6 +44,12 @@
             <properties>
                 <nd4j.backend>nd4j-cuda-7.5</nd4j.backend>
             </properties>
+        </profile>
+        <profile>
+            <id>cudnn</id>
+            <properties>
+                <nd4j.backend>nd4j-cuda-7.5</nd4j.backend>
+            </properties>
             <dependencies>
                 <dependency>
                     <groupId>org.deeplearning4j</groupId>
