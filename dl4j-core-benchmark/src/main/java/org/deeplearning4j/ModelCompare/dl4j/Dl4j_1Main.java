@@ -136,7 +136,7 @@ public class Dl4j_1Main {
             log.debug("Lenet");
             network = new Dl4j_Lenet(height, width, channels, numLabels, learningRate, momentum, l2, seed).build_model();
         }
-        ParallelWrapper wrapper = multiGPUModel(network, buffer, 2, 4);
+        ParallelWrapper wrapper = multiGPUModel(network, buffer, 4, 4);
 
         log.debug("Train model");
         long trainTime = System.currentTimeMillis();
