@@ -122,7 +122,7 @@ public class Dl4j_1Main {
 
         log.debug("Load data");
         long dataLoadTime = System.currentTimeMillis();
-        DataSetIterator trainData = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345), nCores);
+        DataSetIterator trainData = new MnistDataSetIterator(batchSize,true,12345); //new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345), nCores);
         DataSetIterator testData = new MnistDataSetIterator(batchSize,false,12345);
         dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
@@ -137,7 +137,15 @@ public class Dl4j_1Main {
         }
         log.debug("Train model");
         long trainTime = System.currentTimeMillis();
-        train(network, trainData);
+        for (int i = 0; i < epochs; i++) {
+            trainData.reset();
+
+            long time1 = System.currentTimeMillis();
+            train(network, trainData);
+            long time2 = System.currentTimeMillis();
+
+            log.info("Epoch {} complete; Time elapsed: {} ms", i, time2 -  time1);
+        }
         trainTime = System.currentTimeMillis() - trainTime;
 
         log.debug("Evaluate model");
