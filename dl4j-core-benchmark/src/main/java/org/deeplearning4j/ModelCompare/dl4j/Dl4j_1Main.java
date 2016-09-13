@@ -96,7 +96,8 @@ public class Dl4j_1Main {
             ParallelWrapper wrapper = multiGPUModel(network, buffer, numGPUs, avgFrequency);
             wrapper.fit(data);
         } else {
-            network.fit(data);
+            ParallelWrapper wrapper = multiGPUModel(network, buffer, 2, 4);
+            wrapper.fit(data);
         }
 
     }
