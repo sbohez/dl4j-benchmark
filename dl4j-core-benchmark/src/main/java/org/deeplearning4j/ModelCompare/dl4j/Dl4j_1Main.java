@@ -122,7 +122,7 @@ public class Dl4j_1Main {
 
         log.debug("Load data");
         long dataLoadTime = System.currentTimeMillis();
-        DataSetIterator trainData = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345), nCores);
+        DataSetIterator trainData = new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345));
         DataSetIterator testData = new MnistDataSetIterator(batchSize,false,12345);
         dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
