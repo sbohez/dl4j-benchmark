@@ -1,7 +1,6 @@
 package org.deeplearning4j.Cifar10.dl4j;
 
 import org.datavec.image.loader.CifarLoader;
-import org.datavec.image.transform.ColorConversion;
 import org.datavec.image.transform.FlipImageTransform;
 import org.datavec.image.transform.ImageTransform;
 import org.deeplearning4j.Utils.DL4J_Utils;
@@ -51,8 +50,8 @@ public class Dl4j_Cifar10 {
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = 200; //CifarLoader.NUM_TRAIN_IMAGES;
-    protected static int numTestExamples = 200; //CifarLoader.NUM_TEST_IMAGES;
+    protected static int numTrainExamples = 2000; //CifarLoader.NUM_TRAIN_IMAGES;
+    protected static int numTestExamples = 2000; //CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
     protected static int trainBatchSize;
     protected static int testBatchSize;
@@ -205,7 +204,7 @@ public class Dl4j_Cifar10 {
 
         log.debug("Load data...");
         ImageTransform flip = new FlipImageTransform(seed); // Should random flip some images but not all
-        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, yuvTransform, null, true));
+        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, null, true));
 
         log.debug("Build model....");
         network = new CifarModels(
@@ -239,7 +238,7 @@ public class Dl4j_Cifar10 {
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
-        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, numLabels, yuvTransform, null, false));
+        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, numLabels, null, null, false));
         Evaluation eval = network.evaluate(cifarTest);
         log.debug(eval.stats(true));
         DecimalFormat df = new DecimalFormat("#.####");
