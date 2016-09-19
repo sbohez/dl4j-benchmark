@@ -20,7 +20,7 @@ For more details, see the readme [here - TODO]
 ## Core Packages Comparison
 Main packages included for comparison so far...
 
-**Dl4j (v0.5.1)**
+**Dl4j (v0.6.0)**
 * Install: http://deeplearning4j.org/quickstart
 * Setup packages: add to pom.xml
 * Set GPU: change in pom file under nd4j-backends (native for cpu and cuda-7.5 for gpu) 
@@ -71,7 +71,7 @@ Initial analysis. Consider all numbers hostile with potential to change as we ge
 
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------- |:-----:| -----:| -----:| --------:| 
-| Dl4j       | TBV   | 2m07ms|   48s | ~99.0%   | 
+| Dl4j       | 6m18s | 2m40ms| 1m10s | ~97.5%   | 
 | Caffe      | 2m18s |   13s |   33s | ~97.4%   |
 | Tensorflow | 1m10s |   38s | 1m11s | ~98.3%*  |
 | Torch      | 4m54s |   51s | 1m34s | ~98.0%   |
@@ -80,7 +80,7 @@ Initial analysis. Consider all numbers hostile with potential to change as we ge
 
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------: |------:| -----:| -----:| --------:| 
-| Dl4j       | TBV   | 2m48s |   59s | ~99.0%   | 
+| Dl4j       | 19m58s| 3m03s | 1m07s | ~99.0%   | 
 | Caffe      | 13m27s|   40s |   55s | ~99.0%   |
 | Tensorflow |  5m10s| 1m37s | 2m36s | ~98.6%   |
 | Torch      | 17m59s| 6m11s | 3m37s | ~98.3%   |
@@ -92,7 +92,7 @@ Initial analysis. Consider all numbers hostile with potential to change as we ge
 
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------- |:-----:| -----:| -----:| --------:| 
-| Dl4j       | TBV   | 2m16s |   59s | ~97.4%   | 
+| Dl4j       | 6m26s | 2m50ms| 1m20s | ~97.5%   | 
 | Caffe      | 2m20s |   15s |   36s | ~97.4%   |
 | Tensorflow | 1m15s |   43s | 1m18s | ~98.3%*  |
 | Torch      | 4m56s | 1m03s | 1m46s | ~98.0%   |
@@ -101,9 +101,9 @@ Initial analysis. Consider all numbers hostile with potential to change as we ge
 
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------: |------:| -----:| -----:| --------:| 
-| Dl4j       | TVB   | 2m59s | 1m09s | ~99.0%   | 
+| Dl4j       | 20m08s| 3m13s | 1m18s | ~99.0%   | 
 | Caffe      | 13m31s|   42s |   57s | ~99.0%   |
-| Tensorflow | 5m15s | 1m44s | 2m44s | ~98.6%   |
+| Tensorflow |  5m15s| 1m44s | 2m44s | ~98.6%   |
 | Torch      | 18m03s| 6m25s | 3m50s | ~98.3%   |
 
 Note: 
