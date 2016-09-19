@@ -12,7 +12,7 @@ while true; do
 done
 
 time python dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/tensorflow/cifar10_multi_gpu_train.py --num_gpus 4
-time th dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/torch-cifar10.lua
+time th dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/torch/torch-cifar10.lua
 
 
-time java -cp dl4j-core-benchmark/dl4j-core-benchmark.jar org.deeplearning4j.Cifar10.Dl4j_Cifar10
+time java -cp dl4j-core-benchmark/dl4j-core-benchmark.jar org.deeplearning4j.Cifar10.dl4j.Dl4j_Cifar10
