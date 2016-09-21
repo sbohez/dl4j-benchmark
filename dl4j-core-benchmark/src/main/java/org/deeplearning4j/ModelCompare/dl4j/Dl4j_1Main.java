@@ -137,7 +137,7 @@ public class Dl4j_1Main {
             log.debug("Lenet");
             network = new Dl4j_Lenet(height, width, channels, numLabels, learningRate, momentum, l2, seed).build_model();
         }
-        ParallelWrapper wrapper = multiGPUModel(network, buffer, 4, 4);
+       // ParallelWrapper wrapper = multiGPUModel(network, buffer, 4, 4);
 
         log.debug("Train model");
         long trainTime = System.currentTimeMillis();
@@ -145,7 +145,7 @@ public class Dl4j_1Main {
             trainData.reset();
 
             long time1 = System.currentTimeMillis();
-            wrapper.fit(trainData);
+            network.fit(trainData);
             long time2 = System.currentTimeMillis();
 
             log.info("Epoch {} complete; Time elapsed: {} ms", i, time2 -  time1);
