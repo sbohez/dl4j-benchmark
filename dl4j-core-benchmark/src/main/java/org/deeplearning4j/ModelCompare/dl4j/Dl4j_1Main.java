@@ -11,6 +11,7 @@ import org.kohsuke.args4j.Option;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.nativeblas.NativeOpsHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,6 +128,9 @@ public class Dl4j_1Main {
         DataSetIterator trainData = new MnistDataSetIterator(batchSize,true,12345); //new MultipleEpochsIterator(epochs, new MnistDataSetIterator(batchSize,true,12345), nCores);
         DataSetIterator testData = new MnistDataSetIterator(batchSize,false,12345);
         dataLoadTime = System.currentTimeMillis() - dataLoadTime;
+
+        NativeOpsHolder.getInstance().getDeviceNativeOps().setElementThreshold(32);
+        NativeOpsHolder.getInstance().getDeviceNativeOps().setTADThreshold(1);
 
         log.debug("Build model");
         if(modelType.equals("mlp")) {

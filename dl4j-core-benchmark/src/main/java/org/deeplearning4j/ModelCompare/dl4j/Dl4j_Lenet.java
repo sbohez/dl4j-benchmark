@@ -76,7 +76,7 @@ public class Dl4j_Lenet {
 
         MultiLayerNetwork model = new MultiLayerNetwork(conf);
         model.init();
-        model.setListeners(new PerformanceListener(10));
+        model.setListeners(new PerformanceListener(200));
 
         return model;
     }
