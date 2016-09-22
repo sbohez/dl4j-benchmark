@@ -50,8 +50,8 @@ public class Dl4j_Cifar10 {
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = 2000; //CifarLoader.NUM_TRAIN_IMAGES;
-    protected static int numTestExamples = 2000; //CifarLoader.NUM_TEST_IMAGES;
+    protected static int numTrainExamples = 10000; //CifarLoader.NUM_TRAIN_IMAGES;
+    protected static int numTestExamples = 10000; //CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
     protected static int trainBatchSize;
     protected static int testBatchSize;
@@ -204,7 +204,8 @@ public class Dl4j_Cifar10 {
 
         log.debug("Load data...");
         ImageTransform flip = new FlipImageTransform(seed); // Should random flip some images but not all
-        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, true, true));
+        CifarDataSetIterator iter = new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, true, true);
+        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, iter);
 
         log.debug("Build model....");
         network = new CifarModels(
@@ -238,8 +239,9 @@ public class Dl4j_Cifar10 {
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
-        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, numLabels, null, false, false));
-        Evaluation eval = network.evaluate(cifarTest);
+        iter.test();
+        cifar = new MultipleEpochsIterator(epochs, iter);
+        Evaluation eval = network.evaluate(cifar);
         log.debug(eval.stats(true));
         DecimalFormat df = new DecimalFormat("#.####");
         log.info(df.format(eval.accuracy()));
