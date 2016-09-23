@@ -43,19 +43,18 @@ public class Dl4j_Cifar10 {
     @Option(name = "--modelType", usage = "Model type CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG.", aliases = "-mT")
     public String modelType = "CAFFE_QUICK";
     @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
-    // 12 is best on AWS
-    public int numGPUs = 0;
-
+    public int numGPUs = 2;
+    @Option(name="--numTrainExamples",usage="Num train examples.",aliases = "-nTrain")
+    public int numTrainExamples = 10000; //CifarLoader.NUM_TRAIN_IMAGES;
+    @Option(name="--numTestExamples",usage="Num test examples.",aliases = "-nTest")
+    public int numTestExamples = 10000; //CifarLoader.NUM_TEST_IMAGES;
 
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = 10000; //CifarLoader.NUM_TRAIN_IMAGES;
-    protected static int numTestExamples = 10000; //CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
     protected static int trainBatchSize;
     protected static int testBatchSize;
-    protected static int nCores = 32;
 
     protected static int seed = 42;
     protected static int listenerFreq = 1;
@@ -75,6 +74,8 @@ public class Dl4j_Cifar10 {
     protected static double l2;
     protected static double momentum;
     protected static MultiLayerNetwork network;
+    protected boolean train = true;
+    protected boolean preProcess = true;
 
     public void setVaribales() {
         switch (CifarModeEnum.valueOf(modelType)) {
@@ -188,7 +189,6 @@ public class Dl4j_Cifar10 {
 
     public void run(String[] args) throws IOException {
         long totalTime = System.currentTimeMillis();
-        int normalizeValue = 255;
 
         // Parse command line arguments if they exist
         CmdLineParser parser = new CmdLineParser(this);
@@ -204,7 +204,7 @@ public class Dl4j_Cifar10 {
 
         log.debug("Load data...");
         ImageTransform flip = new FlipImageTransform(seed); // Should random flip some images but not all
-        CifarDataSetIterator iter = new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, true, true);
+        CifarDataSetIterator iter = new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, preProcess, train);
         MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, iter);
 
         log.debug("Build model....");
@@ -239,7 +239,7 @@ public class Dl4j_Cifar10 {
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
-        iter.test();
+        iter.test(numTestExamples);
         cifar = new MultipleEpochsIterator(epochs, iter);
         Evaluation eval = network.evaluate(cifar);
         log.debug(eval.stats(true));
