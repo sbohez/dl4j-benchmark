@@ -41,13 +41,13 @@ public class Dl4j_Cifar10 {
 
     // values to pass in from command line when compiled, esp running remotely
     @Option(name = "--modelType", usage = "Model type CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG.", aliases = "-mT")
-    public String modelType = "CAFFE_QUICK";
+    public String modelType = "CAFFE_BATCH_NORM";
     @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
-    public int numGPUs = 2;
+    public int numGPUs = 0;
     @Option(name="--numTrainExamples",usage="Num train examples.",aliases = "-nTrain")
-    public int numTrainExamples = 10000; //CifarLoader.NUM_TRAIN_IMAGES;
+    public int numTrainExamples = 1000; //CifarLoader.NUM_TRAIN_IMAGES;
     @Option(name="--numTestExamples",usage="Num test examples.",aliases = "-nTest")
-    public int numTestExamples = 10000; //CifarLoader.NUM_TEST_IMAGES;
+    public int numTestExamples = 1000; //CifarLoader.NUM_TEST_IMAGES;
 
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
@@ -119,7 +119,7 @@ public class Dl4j_Cifar10 {
                 epochs = 120;
                 nIn = null;
                 nOut = new int[]{32, 32, 64};
-                activation = "sigmoid";
+                activation = "sigmoid"; // TODO confirm sigmoid matches caffe sigmoid1
                 weightInit = WeightInit.DISTRIBUTION;
                 optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
                 updater = Updater.NESTEROVS;

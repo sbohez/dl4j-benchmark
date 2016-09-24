@@ -97,8 +97,8 @@ public class CifarModels {
         return new ConvolutionLayer.Builder(new int[]{5,5}, new int[]{1,1}, padding).name(name).nIn(nIn).nOut(out).dist(new GaussianDistribution(0, std)).build();
     }
 
-    private ConvolutionLayer conv5x5act(String name, int out, double std, int[] padding, String activation) {
-        return new ConvolutionLayer.Builder(new int[]{5,5}, new int[]{1,1}, padding).name(name).nOut(out).activation(activation).dist(new GaussianDistribution(0, std)).build();
+    private ConvolutionLayer conv5x5act(String name, int nIn, int out, double std, int[] padding, String activation) {
+        return new ConvolutionLayer.Builder(new int[]{5,5}, new int[]{1,1}, padding).name(name).nIn(nIn).nOut(out).activation(activation).dist(new GaussianDistribution(0, std)).build();
     }
 
     private ConvolutionLayer conv5x5bias(String name, int nIn, int out, double std, int[] padding, double biasInit) {
@@ -215,20 +215,19 @@ public class CifarModels {
                 .updater(updater).momentum(momentum)
                 .regularization(regularization).l2(l2)
                 .list()
-                .layer(0, conv5x5("cnn1", channels, nOut[0], 1e-4, new int[]{2,2})) // TODO double check bias and
+                .layer(0, conv5x5act("cnn1", channels, nOut[0], 1e-4, new int[]{2,2},  "identity"))
                 .layer(1, maxPool3x3("pool1"))
                 .layer(2, new BatchNormalization.Builder().build())
                 .layer(3, new ActivationLayer.Builder().build())
-                .layer(4, conv5x5("cnn2", 0, nOut[1], 1e-2, new int[]{2,2}))
-                .layer(5, conv5x5act("cnn2", nOut[2], 1e-2, new int[]{2,2}, "identity"))
-                .layer(6, new BatchNormalization.Builder().build())
-                .layer(7, new ActivationLayer.Builder().build())
-                .layer(8, maxPool3x3("pool2"))
-                .layer(9, conv5x5act("cnn2", nOut[3], 1e-2, new int[]{2,2}, "identity"))
-                .layer(10, new BatchNormalization.Builder().build())
-                .layer(11, new ActivationLayer.Builder().build())
-                .layer(12, maxPool3x3("pool2"))
-                .layer(13, output("softmax", numLabels, 1e-2))
+                .layer(4, conv5x5act("cnn2", 0, nOut[1], 1e-2, new int[]{2,2}, "identity"))
+                .layer(5, new BatchNormalization.Builder().build())
+                .layer(6, new ActivationLayer.Builder().build())
+                .layer(7, maxPool3x3("pool2"))
+                .layer(8, conv5x5act("cnn3", 0, nOut[2], 1e-2, new int[]{2,2}, "identity"))
+                .layer(9, new BatchNormalization.Builder().build())
+                .layer(10, new ActivationLayer.Builder().build())
+                .layer(11, maxPool3x3("pool3"))
+                .layer(12, output("softmax", numLabels, 1e-2))
                 .backprop(true).pretrain(false)
                 .cnnInputSize(height, width, channels);
         conf = builder.build();
@@ -283,23 +282,23 @@ public class CifarModels {
                 .lrPolicySteps(25)
                 .momentum(momentum)
                 .list()
-                .layer(0, conv5x5act("cnn1", channels, nOut[0], new int[]{2,2}, "identity"))
+                .layer(0, conv5x5act("cnn1", channels, nOut[0], 0.5, new int[]{2,2}, "identity"))
                 .layer(1, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(2, new ActivationLayer.Builder().build())
-                .layer(3, conv5x5act("cnn2", 0, nOut[1], new int[]{0,0}, "identity"))
+                .layer(3, conv5x5act("cnn2", 0, nOut[1], 0.5, new int[]{0,0}, "identity"))
                 .layer(4, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(5, new ActivationLayer.Builder().build())
-                .layer(6, conv5x5act("cnn3", 0, nOut[2], new int[]{0,0}, "identity"))
+                .layer(6, conv5x5act("cnn3", 0, nOut[2], 0.5, new int[]{0,0}, "identity"))
                 .layer(7, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(8, new ActivationLayer.Builder().build())
                 .layer(9, maxPool3x3("pool1"))
                 .layer(10, conv5x5dropact("cnn4", 0, nOut[3], new int[]{2,2}, "identity"))
                 .layer(11, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(12, new ActivationLayer.Builder().build())
-                .layer(13, conv5x5act("cnn5", 0, nOut[4], new int[]{0,0}, "identity"))
+                .layer(13, conv5x5act("cnn5", 0, nOut[4], 0.5, new int[]{0,0}, "identity"))
                 .layer(14, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(15, new ActivationLayer.Builder().build())
-                .layer(16, conv5x5act("cnn6", 0, nOut[5], new int[]{0,0}, "identity"))
+                .layer(16, conv5x5act("cnn6", 0, nOut[5], 0.5, new int[]{0,0}, "identity"))
                 .layer(17, new BatchNormalization.Builder().eps(1e-3).build())
                 .layer(18, new ActivationLayer.Builder().build())
                 .layer(19, maxPool3x3("pool2")) //TODO 32 not large enough for this setup - verify config - gets to size 3 here
