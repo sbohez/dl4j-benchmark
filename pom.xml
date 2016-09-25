@@ -18,9 +18,9 @@
     <description>Examples of training different data sets</description>
 
     <properties>
-        <dl4j.version>0.5.1-SNAPSHOT</dl4j.version>
-        <nd4j.version>0.5.1-SNAPSHOT</nd4j.version>
-        <datavec.version>0.5.1-SNAPSHOT</datavec.version>
+        <dl4j.version>0.6.1-SNAPSHOT</dl4j.version>
+        <nd4j.version>0.6.1-SNAPSHOT</nd4j.version>
+        <datavec.version>0.6.1-SNAPSHOT</datavec.version>
         <jackson.version>2.4.4</jackson.version>
         <scala.version>2.11.6</scala.version>
         <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
