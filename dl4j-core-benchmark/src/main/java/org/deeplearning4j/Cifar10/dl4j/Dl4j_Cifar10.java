@@ -41,13 +41,13 @@ public class Dl4j_Cifar10 {
 
     // values to pass in from command line when compiled, esp running remotely
     @Option(name = "--modelType", usage = "Model type CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG.", aliases = "-mT")
-    public String modelType = "CAFFE_BATCH_NORM";
+    public String modelType = "CAFFE_QUICK";
     @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
     public int numGPUs = 0;
     @Option(name="--numTrainExamples",usage="Num train examples.",aliases = "-nTrain")
-    public int numTrainExamples = 1000; //CifarLoader.NUM_TRAIN_IMAGES;
+    public int numTrainExamples = 100; //CifarLoader.NUM_TRAIN_IMAGES;
     @Option(name="--numTestExamples",usage="Num test examples.",aliases = "-nTest")
-    public int numTestExamples = 1000; //CifarLoader.NUM_TEST_IMAGES;
+    public int numTestExamples = 100; //CifarLoader.NUM_TEST_IMAGES;
 
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
@@ -204,8 +204,8 @@ public class Dl4j_Cifar10 {
 
         log.debug("Load data...");
         ImageTransform flip = new FlipImageTransform(seed); // Should random flip some images but not all
-        CifarDataSetIterator iter = new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, preProcess, train);
-        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, iter);
+        CifarDataSetIterator cifar = new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, preProcess, train);
+        MultipleEpochsIterator iter = new MultipleEpochsIterator(epochs, cifar);
 
         log.debug("Build model....");
         network = new CifarModels(
@@ -234,14 +234,15 @@ public class Dl4j_Cifar10 {
         dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
         long trainTime = System.currentTimeMillis();
-        DL4J_Utils.train(network, cifar, numGPUs);
+        DL4J_Utils.train(network, iter, numGPUs);
         trainTime = System.currentTimeMillis() - trainTime;
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
-        iter.test(numTestExamples);
-        cifar = new MultipleEpochsIterator(epochs, iter);
-        Evaluation eval = network.evaluate(cifar);
+        cifar.test(numTestExamples);
+        epochs = 1;
+        iter = new MultipleEpochsIterator(epochs, cifar);
+        Evaluation eval = network.evaluate(iter);
         log.debug(eval.stats(true));
         DecimalFormat df = new DecimalFormat("#.####");
         log.info(df.format(eval.accuracy()));
