@@ -45,9 +45,11 @@ public class Dl4j_Cifar10 {
     @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
     public int numGPUs = 0;
     @Option(name="--numTrainExamples",usage="Num train examples.",aliases = "-nTrain")
-    public int numTrainExamples = 100; //CifarLoader.NUM_TRAIN_IMAGES;
+    public int numTrainExamples = CifarLoader.NUM_TRAIN_IMAGES;
     @Option(name="--numTestExamples",usage="Num test examples.",aliases = "-nTest")
-    public int numTestExamples = 100; //CifarLoader.NUM_TEST_IMAGES;
+    public int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
+    @Option(name="--preProcess",usage="Set preprocess.",aliases = "-pre")
+    public boolean preProcess = true;
 
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
@@ -75,7 +77,6 @@ public class Dl4j_Cifar10 {
     protected static double momentum;
     protected static MultiLayerNetwork network;
     protected boolean train = true;
-    protected boolean preProcess = true;
 
     public void setVaribales() {
         switch (CifarModeEnum.valueOf(modelType)) {
