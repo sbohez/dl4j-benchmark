@@ -41,13 +41,19 @@ public class Dl4j_Cifar10 {
 
     // values to pass in from command line when compiled, esp running remotely
     @Option(name = "--modelType", usage = "Model type CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG.", aliases = "-mT")
-    public String modelType = "CAFFE_QUICK";
+    public String modelType = "TORCH_VGG";
     @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
     public int numGPUs = 0;
     @Option(name="--numTrainExamples",usage="Num train examples.",aliases = "-nTrain")
-    public int numTrainExamples = CifarLoader.NUM_TRAIN_IMAGES;
+    public int numTrainExamples = 100; //CifarLoader.NUM_TRAIN_IMAGES;
     @Option(name="--numTestExamples",usage="Num test examples.",aliases = "-nTest")
-    public int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
+    public int numTestExamples = 100; //CifarLoader.NUM_TEST_IMAGES;
+    @Option(name="--trainBatchSize",usage="Train batch size.",aliases = "-nTrainB")
+    public int trainBatchSize = 100;
+    @Option(name="--testBatchSize",usage="Test batch size.",aliases = "-nTestB")
+    public int testBatchSize = 100;
+    @Option(name="--epochs",usage="Number of epochs.",aliases = "-epochs")
+    public int epochs = 1;
     @Option(name="--preProcess",usage="Set preprocess.",aliases = "-pre")
     public boolean preProcess = true;
 
@@ -55,13 +61,10 @@ public class Dl4j_Cifar10 {
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
     protected static int numLabels = CifarLoader.NUM_LABELS;
-    protected static int trainBatchSize;
-    protected static int testBatchSize;
 
     protected static int seed = 42;
     protected static int listenerFreq = 1;
     protected static int iterations = 1;
-    protected static int epochs;
 
     protected static int[] nIn;
     protected static int[] nOut;
@@ -81,9 +84,9 @@ public class Dl4j_Cifar10 {
     public void setVaribales() {
         switch (CifarModeEnum.valueOf(modelType)) {
             case CAFFE_QUICK:
-                epochs = 1;
-                trainBatchSize = 100;
-                testBatchSize = 100;
+//                trainBatchSize = 100;
+//                testBatchSize = 100;
+//                epochs = 1;
                 nIn = null;
                 nOut = new int[]{32, 32, 64, 64};
                 activation = "relu";
@@ -98,9 +101,9 @@ public class Dl4j_Cifar10 {
                 momentum = 0.9;
                 break;
             case CAFFE_FULL_SIGMOID:
-                trainBatchSize = 100;
-                testBatchSize = 100;
-                epochs = 130;
+//                trainBatchSize = 100;
+//                testBatchSize = 100;
+//                epochs = 130;
                 nIn = null;
                 nOut = new int[]{32, 32, 64, 250};
                 activation = "relu";
@@ -115,9 +118,9 @@ public class Dl4j_Cifar10 {
                 momentum = 0.9;
                 break;
             case CAFFE_BATCH_NORM:
-                trainBatchSize = 100;
-                testBatchSize = 1000;
-                epochs = 120;
+//                trainBatchSize = 100;
+//                testBatchSize = 1000;
+//                epochs = 120;
                 nIn = null;
                 nOut = new int[]{32, 32, 64};
                 activation = "sigmoid"; // TODO confirm sigmoid matches caffe sigmoid1
@@ -132,9 +135,9 @@ public class Dl4j_Cifar10 {
                 momentum = 0.9;
                 break;
             case TENSORFLOW_INFERENCE:
-                trainBatchSize = 128;
-                testBatchSize = 128;
-                epochs = 768;
+//                trainBatchSize = 128;
+//                testBatchSize = 128;
+//                epochs = 768;
                 nIn = null;
                 nOut = new int[]{64, 64, 384, 192};
                 activation = "relu";
@@ -150,9 +153,9 @@ public class Dl4j_Cifar10 {
                 break;
             // TODO double check learning rate policy and weight init
             case TORCH_NIN:
-                trainBatchSize = 128;
-                testBatchSize = 128;
-                epochs = 300;
+//                trainBatchSize = 128;
+//                testBatchSize = 128;
+//                epochs = 300;
                 nIn = null;
                 nOut = new int[]{192,160,96,192,192,192,192,192,192,10}; // TODO double check
                 activation = "relu";
@@ -167,9 +170,9 @@ public class Dl4j_Cifar10 {
                 momentum = 0.9;
                 break;
             case TORCH_VGG:
-                trainBatchSize = 128;
-                testBatchSize = 128;
-                epochs = 300;
+//                trainBatchSize = 128;
+//                testBatchSize = 128;
+//                epochs = 300;
                 nIn = null;
                 nOut = new int[]{64,64,128,128,256,256,256,512,512,512,512,512,512,512,512};
                 activation = "relu";
