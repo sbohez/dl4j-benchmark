@@ -65,7 +65,8 @@ In order to run all examples in core, you need to configure a system for all of 
 
 Initial analysis. Consider all numbers hostile with potential to change as we get additional reviews sorted.
 
-#### **Training Function Timing** 
+
+##### Timing for Training Only
 
 **MLP Example**
 
@@ -81,12 +82,12 @@ Initial analysis. Consider all numbers hostile with potential to change as we ge
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------: |------:| -----:| -----:| --------:| 
 | Dl4j       | 19m58s| 3m03s | 1m07s | ~99.0%   | 
-| Caffe      | 13m27s|   40s |   55s | ~99.0%   |
+| Caffe      | 19m49s|   52s | 1m12s | ~99.0%   |
 | Tensorflow |  5m10s| 1m37s | 2m36s | ~98.6%   |
 | Torch      | 17m59s| 6m11s | 3m37s | ~98.3%   |
 
 
-#### **Full Script Timing**
+##### Timing for Full Script Run
 
 **MLP Example**
 
@@ -102,12 +103,13 @@ Initial analysis. Consider all numbers hostile with potential to change as we ge
 | Package    | CPU   | GPU   | Multi | Accuracy |
 | ---------: |------:| -----:| -----:| --------:| 
 | Dl4j       | 20m08s| 3m13s | 1m18s | ~99.0%   | 
-| Caffe      | 13m31s|   42s |   57s | ~99.0%   |
+| Caffe      | 19m52s|   53s | 1m14s | ~99.0%   |
 | Tensorflow |  5m15s| 1m44s | 2m44s | ~98.6%   |
 | Torch      | 18m03s| 6m25s | 3m50s | ~98.3%   |
 
 Note: 
- * Tensorflow required learning rate modification on MLP by 1/10th otherwise accuracy drops to 9% 
+ * Tensorflow required learning rate modification on MLP by 1/10th otherwise accuracy drops to 9%
+ - Accuracy varies slighty between cpu, single gpu & multi-gpu (e.g. DL4J multi-gpu is .90 for mlp and .97 for lenet). 
  - Timings vary (potentially a couple seconds) for all packages on each run
  - Time to transfer and consolidate data can lead to longer performance times on multi-gpu (larger datasets needed for comparison)
  - Issues getting nccl setup on system for Torch multiple gpu tests; thus, not used 
