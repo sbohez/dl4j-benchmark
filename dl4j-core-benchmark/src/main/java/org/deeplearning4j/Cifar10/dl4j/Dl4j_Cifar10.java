@@ -243,7 +243,7 @@ public class Dl4j_Cifar10 {
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
-        cifar.test(numTestExamples);
+        cifar.test(numTestExamples, testBatchSize);
         epochs = 1;
         iter = new MultipleEpochsIterator(epochs, cifar);
         Evaluation eval = network.evaluate(iter);
