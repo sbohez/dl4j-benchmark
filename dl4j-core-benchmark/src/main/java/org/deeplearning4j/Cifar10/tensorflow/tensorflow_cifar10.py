@@ -6,7 +6,7 @@ Reference: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/model
 Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 """
 
-import tensorflow as tf
+import org.deeplearning4j.Cifar10.tensorflow as tf
 import os
 import time
 import sys
@@ -16,7 +16,8 @@ from six.moves import urllib, xrange
 import numpy as np
 from datetime import datetime
 import math
-from tensorflow.models.image.cifar10 import cifar10_input
+from org.deeplearning4j.Cifar10.tensorflow.models.image.cifar10 import cifar10_input
+from org.deeplearning4j.Utils.tensorflow_utils import print_time
 
 # TODO add gpu & connect train with eval
 
@@ -58,19 +59,6 @@ tf.app.flags.DEFINE_integer('num_examples', 10000, """Number of examples to run.
 tf.app.flags.DEFINE_boolean('run_once', False,"""Whether to run eval only once.""")
 # tf.app.flags.DEFINE_float('momentum', 0.9, 'Momentum.')
 tf.app.flags.DEFINE_float('l2', 1e-4, 'Weight decay.')
-
-# FLAGS = tf.app.flags.FLAGS
-# FLAGS.batch_size = 128
-# FLAGS.data_dir = BASE_DIR + '/cifar-10-batches-bin'
-# FLAGS.use_fp16 = False
-# FLAGS.train_dir = BASE_DIR + '/cifar10_train'
-# FLAGS.max_steps = 10
-# FLAGS.log_device_placement = True
-# FLAGS.eval_dir = BASE_DIR + '/cifar10_eval'
-# FLAGS.checkpoint_dir = BASE_DIR + '/cifar10_train'
-# FLAGS.eval_internal_secs = 60
-# FLAGS.num_examples = 10000
-# FLAGS.run_once = True
 
 # Summary
 
@@ -465,12 +453,6 @@ def evaluate():
             time.sleep(FLAGS.eval_interval_secs)
         return time.time() - test_time, data_load_time
 
-def printTime(time_type, time):
-    min = int(round(time/60))
-    sec = int(round(time - min*60))
-    milli = time * 1000
-    print(time_type + ' load time: %s min %s sec | %s millisec' %(min, sec, milli))
-
 def run(argv=None):  # pylint: disable=unused-argument
     total_time = time.time()
     download_and_extract()
@@ -481,10 +463,10 @@ def run(argv=None):  # pylint: disable=unused-argument
     test_time, data_load_time2 = evaluate()
 
     print("****************Example finished********************")
-    printTime('Data load', data_load_time)
-    printTime('Train', train_time)
-    printTime('Test', test_time)
-    printTime('Total', total_time)
+    print_time('Data load', data_load_time)
+    print_time('Train', train_time)
+    print_time('Test', test_time)
+    print_time('Total', total_time)
 
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ require 'optim'
 require 'logroll'
 require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/ModelCompare/torch/torch-lenet'
 require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/ModelCompare/torch/torch-mlp'
+require 'dl4j-core-benchmark/src/main/java/org/deeplearning4j/Utils/torch-utils'
 
 ------------------------------------------------------------
 -- Setup Variables
@@ -108,17 +109,6 @@ testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
 ------------------------------------------------------------
 -- Support Functions
 
-function printTime(time_type, time)
-    local min = math.floor(time/60)
-    local partialSec = min - time/60
-    local sec = 0
-    if partialSec > 0 then
-        sec = math.floor(partialSec * 60)
-    end
-    local milli = time * 1000
-    print(string.format(time_type .. ' time: %0.2f min %0.2f sec %0.2f millisec', min, sec,  milli))
-end
-
 function applyCuda(flag, module) if flag then require 'cunn' return module:cuda() else return module end end
 
 function convertCuda(model, nGPU)
@@ -127,7 +117,7 @@ function convertCuda(model, nGPU)
     if model_config.usecuDNN then
         local cudnn = require 'cudnn'
         cudnn.convert(model:get(nGPU), cudnn)
-        cudnn.verbokse = false
+        cudnn.verbose = false
         cudnn.benchmark = true
         if opt.cudnn_fastest then
             for _,v in ipairs(model:findModules'cudnn.SpatialConvolution') do v:fastest() end
@@ -313,7 +303,7 @@ test_time = sys.clock() - test_time
 total_time = sys.clock() - total_time
 
 print("****************Example finished********************")
-printTime('Data load', data_load_time)
-printTime('Train', train_time)
-printTime('Test', test_time)
-printTime('Total', total_time)
+util.printTime('Data load', data_load_time)
+util.printTime('Train', train_time)
+util.printTime('Test', test_time)
+util.printTime('Total', total_time)

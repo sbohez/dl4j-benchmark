@@ -2,7 +2,7 @@
 # then another factor of 10 after 10 more epochs (5000 iters)
 
 # The train/test net protocol buffer definition
-net: "dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/caffe_cifar10_full_sigmoid_train_test_bn.prototxt"
+net: "dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/caffe/caffe_cifar10_full_sigmoid_train_test_bn.prototxt"
 # test_iter specifies how many forward passes the test should carry out.
 # In the case of CIFAR10, we have test batch size 100 and 10 test iterations,
 # covering the full 10,000 testing images.
@@ -26,6 +26,6 @@ display: 60000
 max_iter: 60000
 # snapshot intermediate results
 snapshot: 60000
-snapshot_prefix: "dl4j-core-benchmark/src/main/java/org/deeplearning4j/Cifar10/snapshots/caffe_bn"
+snapshot_prefix: "caffe_bn"
 # solver mode: CPU or GPU
 solver_mode: GPU

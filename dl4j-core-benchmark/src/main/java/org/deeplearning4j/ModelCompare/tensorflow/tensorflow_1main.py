@@ -1,4 +1,9 @@
-# TensorFlow Benchmark Util
+'''
+    TensorFlow Main Class
+
+    Run models by passing in --model_type
+    Current options are mlp and lenet
+'''
 
 import os
 from six.moves import xrange
@@ -8,7 +13,7 @@ import time
 from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow_lenet import Lenet
 from tensorflow_mlp import MLP
-
+from org.deeplearning4j.Utils.tensorflow_utils import print_time
 
 DTYPE = tf.float32
 DEVICE = '/cpu:0'
@@ -56,13 +61,6 @@ model_config = {'lenet': {'batch_size': FLAGS.batch_size, 'num_classes': FLAGS.n
                         'height': FLAGS.height, 'width': FLAGS.width,'channels': FLAGS.channels,
                         'use_cudnn': False,'learning_rate': 6e-4, 'momentum': 0.9,'l2': 1e-4, 'seed': FLAGS.seed,
                      'dtype': DTYPE, 'device': DEVICE, 'data_format': DATA_FORMAT}}
-
-
-def printTime(time_type, time):
-    min = int(round(time/60))
-    sec = int(round(time - min*60))
-    milli = time * 1000
-    print(time_type + ' load time: %s min %s sec | %s millisec' %(min, sec, milli))
 
 
 ############## Data ###############
@@ -287,10 +285,10 @@ def run():
 
     total_time = time.time() - total_time
     print("****************Example finished********************")
-    printTime('Data load', data_load_time)
-    printTime('Train', train_time)
-    printTime('Test', test_time)
-    printTime('Total', total_time)
+    print_time('Data load', data_load_time)
+    print_time('Train', train_time)
+    print_time('Test', test_time)
+    print_time('Total', total_time)
 
 
 if __name__ == "__main__":

@@ -65,6 +65,7 @@ In order to run all examples in core, you need to configure a system for all of 
 
 Initial analysis. Consider all numbers hostile with potential to change as we get additional reviews sorted.
 
+
 ##### Timing for Training Only
 
 **MLP Example**
@@ -111,7 +112,7 @@ Note:
  - Accuracy varies slighty between cpu, single gpu & multi-gpu (e.g. DL4J multi-gpu is .90 for mlp and .97 for lenet). 
  - Timings vary (potentially a couple seconds) for all packages on each run
  - Time to transfer and consolidate data can lead to longer performance times on multi-gpu (larger datasets needed for comparison)
- - Issues getting nccl setup on system for Torch multiple gpu tests; thus, not used in tests 
+ - Issues getting nccl setup on system for Torch multiple gpu tests; thus, not used 
 
 ## *How to Help*
 Help is welcome to improve comparisons. If you know a better way or see a fix that is needed, please submit a pull request. Top of mind next steps that help would be appreciated:

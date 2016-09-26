@@ -1,4 +1,4 @@
-package org.deeplearning4j.Cifar10;
+package org.deeplearning4j.Cifar10.dl4j;
 
 /**
  * ImageNet DataMode

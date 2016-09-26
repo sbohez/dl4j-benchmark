@@ -1,6 +1,9 @@
-package org.dl4j.benchmarks.Cifar10;
+package org.deeplearning4j.Cifar10.dl4j;
 
 import org.datavec.image.loader.CifarLoader;
+import org.datavec.image.transform.FlipImageTransform;
+import org.datavec.image.transform.ImageTransform;
+import org.deeplearning4j.Utils.DL4J_Utils;
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.CifarDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
@@ -11,14 +14,15 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.Cifar10.CifarModels;
-import org.deeplearning4j.Cifar10.CifarModeEnum;
-import org.deeplearning4j.ModelCompare.dl4j.Dl4j_1Main;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.Option;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 
 /**
@@ -34,20 +38,33 @@ import java.util.Arrays;
  */
 public class Dl4j_Cifar10 {
     protected static final Logger log = LoggerFactory.getLogger(Dl4j_Cifar10.class);
+
+    // values to pass in from command line when compiled, esp running remotely
+    @Option(name = "--modelType", usage = "Model type CAFFE_BATCH_NORM, CAFFE_FULL_SIGMOID, CAFFE_QUICK, TENSORFLOW_INFERENCE, TORCH_NIN, TORCH_VGG.", aliases = "-mT")
+    public String modelType = "TORCH_VGG";
+    @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
+    public int numGPUs = 0;
+    @Option(name="--numTrainExamples",usage="Num train examples.",aliases = "-nTrain")
+    public int numTrainExamples = 100; //CifarLoader.NUM_TRAIN_IMAGES;
+    @Option(name="--numTestExamples",usage="Num test examples.",aliases = "-nTest")
+    public int numTestExamples = 100; //CifarLoader.NUM_TEST_IMAGES;
+    @Option(name="--trainBatchSize",usage="Train batch size.",aliases = "-nTrainB")
+    public int trainBatchSize = 100;
+    @Option(name="--testBatchSize",usage="Test batch size.",aliases = "-nTestB")
+    public int testBatchSize = 100;
+    @Option(name="--epochs",usage="Number of epochs.",aliases = "-epochs")
+    public int epochs = 1;
+    @Option(name="--preProcess",usage="Set preprocess.",aliases = "-pre")
+    public boolean preProcess = true;
+
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
     protected static int CHANNELS = 3;
-    protected static int numTrainExamples = 2000;//CifarLoader.NUM_TRAIN_IMAGES;
-    protected static int numTestExamples = 2000; //CifarLoader.NUM_TEST_IMAGES;
     protected static int numLabels = CifarLoader.NUM_LABELS;
-    protected static int trainBatchSize;
-    protected static int testBatchSize;
-    protected static int nCores = 32;
 
     protected static int seed = 42;
     protected static int listenerFreq = 1;
     protected static int iterations = 1;
-    protected static int epochs;
 
     protected static int[] nIn;
     protected static int[] nOut;
@@ -61,22 +78,15 @@ public class Dl4j_Cifar10 {
     protected static boolean regularization;
     protected static double l2;
     protected static double momentum;
+    protected static MultiLayerNetwork network;
+    protected boolean train = true;
 
-    public static CifarModeEnum networkType = CifarModeEnum.TORCH_NIN;
-
-    public static void main(String[] args) throws IOException {
-        long totalTime = System.currentTimeMillis();
-        MultiLayerNetwork network;
-        int normalizeValue = 255;
-
-        System.out.println("Load data...");
-
-        log.info("Build model....");
-        switch (networkType) {
+    public void setVaribales() {
+        switch (CifarModeEnum.valueOf(modelType)) {
             case CAFFE_QUICK:
-                epochs = 1;
-                trainBatchSize = 100;
-                testBatchSize = 100;
+//                trainBatchSize = 100;
+//                testBatchSize = 100;
+//                epochs = 1;
                 nIn = null;
                 nOut = new int[]{32, 32, 64, 64};
                 activation = "relu";
@@ -91,9 +101,9 @@ public class Dl4j_Cifar10 {
                 momentum = 0.9;
                 break;
             case CAFFE_FULL_SIGMOID:
-                trainBatchSize = 100;
-                testBatchSize = 100;
-                epochs = 130;
+//                trainBatchSize = 100;
+//                testBatchSize = 100;
+//                epochs = 130;
                 nIn = null;
                 nOut = new int[]{32, 32, 64, 250};
                 activation = "relu";
@@ -108,12 +118,12 @@ public class Dl4j_Cifar10 {
                 momentum = 0.9;
                 break;
             case CAFFE_BATCH_NORM:
-                trainBatchSize = 100;
-                testBatchSize = 1000;
-                epochs = 120;
+//                trainBatchSize = 100;
+//                testBatchSize = 1000;
+//                epochs = 120;
                 nIn = null;
                 nOut = new int[]{32, 32, 64};
-                activation = "sigmoid";
+                activation = "sigmoid"; // TODO confirm sigmoid matches caffe sigmoid1
                 weightInit = WeightInit.DISTRIBUTION;
                 optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
                 updater = Updater.NESTEROVS;
@@ -125,9 +135,9 @@ public class Dl4j_Cifar10 {
                 momentum = 0.9;
                 break;
             case TENSORFLOW_INFERENCE:
-                trainBatchSize = 128;
-                testBatchSize = 128;
-                epochs = 2560;
+//                trainBatchSize = 128;
+//                testBatchSize = 128;
+//                epochs = 768;
                 nIn = null;
                 nOut = new int[]{64, 64, 384, 192};
                 activation = "relu";
@@ -138,32 +148,16 @@ public class Dl4j_Cifar10 {
                 learningRate = 1e-1;
                 biasLearningRate = Double.NaN;
                 regularization = true;
-                l2 = 0.004;
+                l2 = 0;
                 momentum = 0.9;
                 break;
+            // TODO double check learning rate policy and weight init
             case TORCH_NIN:
-                trainBatchSize = 128;
-                testBatchSize = 128;
-                epochs = 2; // 300;
+//                trainBatchSize = 128;
+//                testBatchSize = 128;
+//                epochs = 300;
                 nIn = null;
-                nOut = null;
-                activation = "relu";
-                weightInit = WeightInit.DISTRIBUTION;
-                optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
-                updater = Updater.SGD;
-                lossFunctions = LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD;
-                learningRate = 1e-1;
-                biasLearningRate = Double.NaN;
-                regularization = true;
-                l2 = 5e-4;
-                momentum = 0.9;
-                break;
-            case TORCH_VGG:
-                trainBatchSize = 128;
-                testBatchSize = 128;
-                epochs = 300;
-                nIn = null;
-                nOut = null;
+                nOut = new int[]{192,160,96,192,192,192,192,192,192,10}; // TODO double check
                 activation = "relu";
                 weightInit = WeightInit.RELU;
                 optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
@@ -175,9 +169,49 @@ public class Dl4j_Cifar10 {
                 l2 = 5e-4;
                 momentum = 0.9;
                 break;
+            case TORCH_VGG:
+//                trainBatchSize = 128;
+//                testBatchSize = 128;
+//                epochs = 300;
+                nIn = null;
+                nOut = new int[]{64,64,128,128,256,256,256,512,512,512,512,512,512,512,512};
+                activation = "relu";
+                weightInit = WeightInit.RELU;
+                optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
+                updater = Updater.SGD;
+                lossFunctions = LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD;
+                learningRate = 1;
+                biasLearningRate = Double.NaN;
+                regularization = true;
+                l2 = 5e-4;
+                momentum = 0.9;
+                break;
             default:
                 throw new InvalidInputTypeException("Incorrect model provided.");
         }
+    }
+
+    public void run(String[] args) throws IOException {
+        long totalTime = System.currentTimeMillis();
+
+        // Parse command line arguments if they exist
+        CmdLineParser parser = new CmdLineParser(this);
+        try {
+            parser.parseArgument(args);
+        } catch (CmdLineException e) {
+            // handling of wrong arguments
+            System.err.println(e.getMessage());
+            parser.printUsage(System.err);
+        }
+
+        setVaribales();
+
+        log.debug("Load data...");
+        ImageTransform flip = new FlipImageTransform(seed); // Should random flip some images but not all
+        CifarDataSetIterator cifar = new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, preProcess, train);
+        MultipleEpochsIterator iter = new MultipleEpochsIterator(epochs, cifar);
+
+        log.debug("Build model....");
         network = new CifarModels(
                 HEIGHT,
                 WIDTH,
@@ -196,35 +230,39 @@ public class Dl4j_Cifar10 {
                 biasLearningRate,
                 regularization,
                 l2,
-                momentum).buildNetwork(networkType);
-
-
+                momentum).buildNetwork(CifarModeEnum.valueOf(modelType));
         network.setListeners(Arrays.asList((IterationListener) new ScoreIterationListener(listenerFreq)));
 
-        System.out.println("Train model...");
+        log.debug("Train model...");
         long dataLoadTime = System.currentTimeMillis();
-        MultipleEpochsIterator cifar = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, normalizeValue, true));
-        MultipleEpochsIterator cifarTest = new MultipleEpochsIterator(1, new CifarDataSetIterator(testBatchSize, numTestExamples, new int[] {HEIGHT, WIDTH, CHANNELS}, normalizeValue, false));
         dataLoadTime = System.currentTimeMillis() - dataLoadTime;
 
         long trainTime = System.currentTimeMillis();
-        network.fit(cifar);
+        DL4J_Utils.train(network, iter, numGPUs);
         trainTime = System.currentTimeMillis() - trainTime;
 
         log.info("Evaluate model....");
         long testTime = System.currentTimeMillis();
-        Evaluation eval = network.evaluate(cifarTest);
-        System.out.println(eval.stats(true));
+        cifar.test(numTestExamples, testBatchSize);
+        epochs = 1;
+        iter = new MultipleEpochsIterator(epochs, cifar);
+        Evaluation eval = network.evaluate(iter);
+        log.debug(eval.stats(true));
+        DecimalFormat df = new DecimalFormat("#.####");
+        log.info(df.format(eval.accuracy()));
         testTime =  System.currentTimeMillis() - testTime;
-
         totalTime = System.currentTimeMillis() - totalTime;
 
         log.info("****************Example finished********************");
-        Dl4j_1Main.printTime("Data", dataLoadTime);
-        Dl4j_1Main.printTime("Train", trainTime);
-        Dl4j_1Main.printTime("Test", testTime);
-        Dl4j_1Main.printTime("Total", totalTime);
+        DL4J_Utils.printTime("Data", dataLoadTime);
+        DL4J_Utils.printTime("Train", trainTime);
+        DL4J_Utils.printTime("Test", testTime);
+        DL4J_Utils.printTime("Total", totalTime);
 
+    }
+
+    public static void main(String[] args) throws Exception {
+        new Dl4j_Cifar10().run(args);
     }
 
 }

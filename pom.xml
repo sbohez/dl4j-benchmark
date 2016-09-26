@@ -18,9 +18,9 @@
     <description>Examples of training different data sets</description>
 
     <properties>
-        <nd4j.version>0.6.0</nd4j.version>
-        <dl4j.version>0.6.0</dl4j.version>
-        <datavec.version>0.6.0</datavec.version>
+        <dl4j.version>0.6.1-SNAPSHOT</dl4j.version>
+        <nd4j.version>0.6.1-SNAPSHOT</nd4j.version>
+        <datavec.version>0.6.1-SNAPSHOT</datavec.version>
         <jackson.version>2.4.4</jackson.version>
         <scala.version>2.11.6</scala.version>
         <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
@@ -41,6 +41,15 @@
         </profile>
         <profile>
             <id>cuda</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <nd4j.backend>nd4j-cuda-7.5</nd4j.backend>
+            </properties>
+        </profile>
+        <profile>
+            <id>cudnn</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>

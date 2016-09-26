@@ -1,5 +1,6 @@
 package org.deeplearning4j.ModelCompare.dl4j;
 
+import org.deeplearning4j.Utils.DL4J_Utils;
 import org.deeplearning4j.datasets.iterator.MultipleEpochsIterator;
 import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
@@ -13,6 +14,7 @@ import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 import java.text.DecimalFormat;
 import java.util.concurrent.TimeUnit;
@@ -31,11 +33,8 @@ public class Dl4j_1Main {
     @Option(name="--halfPrecision",usage="Apply half precision for GPUs.",aliases = "-h")
     public boolean half = false;
 
-
     protected final int seed = 42;
     protected final int nCores = 32;
-    public final static int buffer = 24;
-    public final static int avgFrequency = 3;
 
     protected int height;
     protected int width;
@@ -69,36 +68,6 @@ public class Dl4j_1Main {
             momentum = 0.9;
             l2 = 5e-4;
         }
-    }
-
-    public static void printTime(String name, long ms){
-        log.info(name + " time: {} min, {} sec | {} milliseconds",
-                TimeUnit.MILLISECONDS.toMinutes(ms),
-                TimeUnit.MILLISECONDS.toSeconds(ms) -
-                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(ms)),
-                ms);
-    }
-
-    public static ParallelWrapper multiGPUModel(MultiLayerNetwork network, int buffer, int workers, int avgFrequency) {
-        return new ParallelWrapper.Builder(network)
-                .prefetchBuffer(buffer)
-                .workers(workers)
-                .averagingFrequency(avgFrequency)
-                .build();
-    }
-
-    public void train(MultiLayerNetwork network, DataSetIterator data){
-//        org.nd4j.jita.conf.CudaEnvironment.getInstance().getConfiguration().allowMultiGPU(true)
-//                .setMaximumDeviceCache(4L * 1024L * 1024L).setMaximumHostCache(8L * 1024L * 1024L)
-//                .setMaximumGridSize(512).setMaximumBlockSize(512).allowCrossDeviceAccess(true);
-
-        if(numGPUs > 0 ) {
-            ParallelWrapper wrapper = multiGPUModel(network, buffer, numGPUs, avgFrequency);
-            wrapper.fit(data);
-        } else {
-            network.fit(data);
-        }
-
     }
 
     public void run(String[] args) throws Exception {
@@ -137,7 +106,7 @@ public class Dl4j_1Main {
         }
         log.debug("Train model");
         long trainTime = System.currentTimeMillis();
-        train(network, trainData);
+        DL4J_Utils.train(network, trainData, numGPUs);
         trainTime = System.currentTimeMillis() - trainTime;
 
         log.debug("Evaluate model");
@@ -150,10 +119,10 @@ public class Dl4j_1Main {
 
         totalTime = System.currentTimeMillis() - totalTime ;
         log.info("****************Example finished********************");
-        printTime("Data", dataLoadTime);
-        printTime("Train", trainTime);
-        printTime("Test", testTime);
-        printTime("Total", totalTime);
+        DL4J_Utils.printTime("Data", dataLoadTime);
+        DL4J_Utils.printTime("Train", trainTime);
+        DL4J_Utils.printTime("Test", testTime);
+        DL4J_Utils.printTime("Total", totalTime);
 
     }
 

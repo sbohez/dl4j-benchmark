@@ -8,7 +8,7 @@ layer {
     phase: TRAIN
   }
   transform_param {
-    mean_file: "dl4j-core-benchmark/src/main/resources/caffe-cifar-mean.binaryproto"
+    mean_file: "dl4j-core-benchmark/src/main/resources/caffe_data/caffe-cifar-mean.binaryproto"
   }
   data_param {
     source: "dl4j-core-benchmark/src/main/resources/cifar10_train_lmdb"
@@ -25,7 +25,7 @@ layer {
     phase: TEST
   }
   transform_param {
-    mean_file: "dl4j-core-benchmark/src/main/resources/caffe-cifar-mean.binaryproto"
+    mean_file: "dl4j-core-benchmark/src/main/resources/caffe_data/caffe-cifar-mean.binaryproto"
   }
   data_param {
     source: "dl4j-core-benchmark/src/main/resources/cifar10_test_lmdb"
