@@ -102,7 +102,7 @@
         </dependency>
         <dependency>
             <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-ui</artifactId>
+            <artifactId>deeplearning4j-ui-resources</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
