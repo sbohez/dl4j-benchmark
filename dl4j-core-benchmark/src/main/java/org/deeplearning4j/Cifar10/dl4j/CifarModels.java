@@ -142,7 +142,7 @@ public class CifarModels {
     }
 
     private OutputLayer output(String name, int nout, double std) {
-        return new OutputLayer.Builder(lossFunctions).name(name).nOut(nout).dist(new GaussianDistribution(0, std)).build();
+        return new OutputLayer.Builder(lossFunctions).name(name).activation("softmax").nOut(nout).dist(new GaussianDistribution(0, std)).build();
     }
 
     public MultiLayerConfiguration caffeInitQuick() {
@@ -336,8 +336,6 @@ public class CifarModels {
                 .lrPolicySteps(9765) // 9765 = (25*50000)/128 - based on iterations
                 // TODO need momentum applied when not nesterovs
                 // TODO need lr decay applied in sgd when provided
-                // TODO local, global v, global u norm
-                // TODO apply yuv conversion
                 // TODO add weight init for caffe for Xavier and recompare lenet
                 .momentum(momentum)
                 .list()
