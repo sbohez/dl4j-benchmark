@@ -45,9 +45,9 @@ public class Dl4j_Cifar10 {
     @Option(name="--numGPUs",usage="How many workers to use for multiple GPUs.",aliases = "-ng")
     public int numGPUs = 0;
     @Option(name="--numTrainExamples",usage="Num train examples.",aliases = "-nTrain")
-    public int numTrainExamples = 100; //CifarLoader.NUM_TRAIN_IMAGES;
+    public int numTrainExamples = CifarLoader.NUM_TRAIN_IMAGES;
     @Option(name="--numTestExamples",usage="Num test examples.",aliases = "-nTest")
-    public int numTestExamples = 100; //CifarLoader.NUM_TEST_IMAGES;
+    public int numTestExamples = CifarLoader.NUM_TEST_IMAGES;
     @Option(name="--trainBatchSize",usage="Train batch size.",aliases = "-nTrainB")
     public int trainBatchSize = 100;
     @Option(name="--testBatchSize",usage="Test batch size.",aliases = "-nTestB")
@@ -55,7 +55,7 @@ public class Dl4j_Cifar10 {
     @Option(name="--epochs",usage="Number of epochs.",aliases = "-epochs")
     public int epochs = 1;
     @Option(name="--preProcess",usage="Set preprocess.",aliases = "-pre")
-    public boolean preProcess = true;
+    public boolean preProcess = false;
 
     protected static int HEIGHT = 32;
     protected static int WIDTH = 32;
@@ -151,13 +151,13 @@ public class Dl4j_Cifar10 {
                 l2 = 0;
                 momentum = 0.9;
                 break;
-            // TODO double check learning rate policy and weight init
+            // TODO double check learning rate policy
             case TORCH_NIN:
 //                trainBatchSize = 128;
 //                testBatchSize = 128;
 //                epochs = 300;
                 nIn = null;
-                nOut = new int[]{192,160,96,192,192,192,192,192,192,10}; // TODO double check
+                nOut = new int[]{192,160,96,192,192,192,192,192,192,10};
                 activation = "relu";
                 weightInit = WeightInit.RELU;
                 optimizationAlgorithm = OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT;
@@ -208,7 +208,7 @@ public class Dl4j_Cifar10 {
 
         log.debug("Load data...");
         ImageTransform flip = new FlipImageTransform(seed); // Should random flip some images but not all
-        CifarDataSetIterator cifar = new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, null, preProcess, train);
+        CifarDataSetIterator cifar = new CifarDataSetIterator(trainBatchSize, numTrainExamples, new int[]{HEIGHT, WIDTH, CHANNELS}, numLabels, flip, preProcess, train);
         MultipleEpochsIterator iter = new MultipleEpochsIterator(epochs, cifar);
 
         log.debug("Build model....");

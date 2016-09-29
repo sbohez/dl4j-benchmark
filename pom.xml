@@ -32,7 +32,7 @@
         <profile>
             <id>native</id>
             <activation>
-                <activeByDefault>false</activeByDefault>
+                <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
                 <dl4j.backend>deeplearning4j-core</dl4j.backend>
@@ -51,7 +51,7 @@
         <profile>
             <id>cudnn</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
                 <nd4j.backend>nd4j-cuda-7.5</nd4j.backend>
